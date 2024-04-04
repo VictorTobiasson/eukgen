@@ -47,10 +47,12 @@ def get_uids(kogid): # also gets descriptor for KOG
     except: # row is formated without ";" separating the gene alias and descriptor
         descriptor = extract_descriptor_htmlrow(descriptor_row, True)
         
+    all_tds = html.find_all("td")
     for i in range(2, len(html.find_all("td")), 4):
-        rowtext = str(html.find_all("td")[i])
+        rowtext = str(all_tds[i])
         uid = extract_uid_htmlrow(rowtext)
         uids.append(uid)
+        
     output = "data/kog_uid/{}.tsv".format(kogid)
     with open(output, "a") as outfile:
         for uid in uids:
@@ -66,9 +68,13 @@ else:
     end_range = section_indices[section]
 
 start_knumber = int(sys.argv[3])
+end_knumber = int(sys.argv[4])
     
 for kog_id in kog_ids[start_range:end_range]:
    # print(kog_id)
+    if int(kog_id[1:]) == end_knumber:
+        break
     if int(kog_id[1:]) >= start_knumber:
         get_uids(kog_id)
+    
 

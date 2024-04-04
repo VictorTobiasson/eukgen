@@ -66,7 +66,6 @@ def check_jobstatus(jobid):
 # retrieve job results
 def download_tsvs(jobid, chunk):
     url = 'https://rest.uniprot.org/idmapping/uniprotkb/results/stream/{}?compressed=true&fields=accession&format=tsv'.format(jobid) 
-    "--output" 
     destination = "Data/Kegg2Uniprot/chunk{}.{}.gz".format(str(chunk), jobid)
     command = ["curl", url, "--output", destination]
     response = subprocess.run(

@@ -3,10 +3,14 @@ import regex as re
 import sys
 from collections import defaultdict
 
+<<<<<<< HEAD:KEGG/03.uid_genes.biowulf.py
 knumbers_unfiltered = ["K" + str((5-len(str(i)))*"0") + str(i) for i in range(27110)]
 
 start_group, end_group, section = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
     
+=======
+#knumbers_unfiltered = ["K" + str((5-len(str(i)))*"0") + str(i) for i in range(1000)]
+>>>>>>> 46ecab277825d84d40b6351814cdcf81bc4c6e9e:KEGG/03.uid_genes.py
 
 def concat_clusters(group_no, knumbers):
     knumbers_range = knumbers[(group_no - 1) * 100: group_no * 100]
