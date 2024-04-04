@@ -3,7 +3,7 @@ import regex as re
 import sys
 from collections import defaultdict
 
-knumbers_unfiltered = ["K" + str((5-len(str(i)))*"0") + str(i) for i in range(1000)]
+#knumbers_unfiltered = ["K" + str((5-len(str(i)))*"0") + str(i) for i in range(1000)]
 
 def concat_clusters(group_no, knumbers):
     knumbers_range = knumbers[(group_no - 1) * 100: group_no * 100]
@@ -26,7 +26,7 @@ def assign_batches(group_no):
     with open(infilename, "r") as f:
         lines = f.readlines()
         for line in lines:
-            if ind % 10 == 0:
+            if ind % 10000 == 0:
                 batch_id += 1
             batch_ids[batch_id] += [line.strip()]
             ind += 1
@@ -37,12 +37,7 @@ def run_batch(ids):
     to_db = "\'to=\"UniRef100\"\'"
     idstr = "\'ids=\"" + ",".join(ids) + "\"\'"
     command = "curl --request POST {} --form {} --form {} --form {}".format(requesturl, from_db, to_db, idstr)
-    response = subprocess.run(
-        command,
-        text=True,
-        stdout=subprocess.PIPE,
-        check=True,
-        shell=True)
+    response = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=True, shell=True)
     print(command)
     dict_str_out = response.stdout # str:{"jobId":"62910de2cb548388eac8e873394b006e9c2c16de"}
     print(dict_str_out)
