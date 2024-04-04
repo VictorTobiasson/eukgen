@@ -3,7 +3,7 @@ import regex as re
 import sys
 from collections import defaultdict
 
-knumbers_unfiltered = ["K" + str((5-len(str(i)))*"0") + str(i) for i in range(1000)]
+#knumbers_unfiltered = ["K" + str((5-len(str(i)))*"0") + str(i) for i in range(1000)]
 
 def concat_clusters(group_no, knumbers):
     knumbers_range = knumbers[(group_no - 1) * 100: group_no * 100]
