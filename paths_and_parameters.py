@@ -1,7 +1,7 @@
 # main parameter storage
 
 # global paths
-path_root = '/data/tobiassonva/data/eukgen/'
+path_root = '/vf/users/luojaa/eukgen/'
 path_core_data = path_root + 'core_data/'
 
 path_processing = path_root + 'processing/'
@@ -60,7 +60,7 @@ prok2111_protein_taxonomy_trimmed = path_taxonomy + 'prok2111_protein_taxonomy_t
 
 # executable paths
 exe_python = 'python'
-exe_famsa = '/data/tobiassonva/data/software/FAMSA-2.0.1/famsa'
+exe_famsa = '/data/luojaa/software/FAMSA/famsa'
 exe_fasttree = 'FastTree'
 exe_muscle5 = 'muscle'
 exe_iqtree = 'iqtree2'
@@ -79,12 +79,12 @@ mmseqs_cascade_opts = {'cascade_steps': 4,
                        'cascade_clust': ''
                        }
 
-exe_realignment = path_root + 'muscle_crop_and_align.py'
+exe_realignment = '/home/luojaa/eukgen/muscle_crop_and_align.py'
 muscle_realignment_timeout = 7200
 realignment_swarm_opts = {'threads-per-process': 8,
                           'gb-per-process': '50',
                           'time': '72:00:00',
-                          'logdir': '/data/tobiassonva/data/log/swarm_out/',
+                          'logdir': '/data/luojaa/log/swarm_out/',
                           'job-name': 'swarm_realignment',
                           'maxrunning': 1000,
 
