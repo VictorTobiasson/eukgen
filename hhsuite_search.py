@@ -39,6 +39,10 @@ def hhsuite_search(query_hhm_ffindex, query_hhm_ffdata, targetDB, output_root, t
 
     if search_type == 'hhblits':
         run_dict['search'] = f'{exe_hhblits_omp} -i {running_root}{query_basename}_hhm -d {running_root}{target_basename} -cpu {threads}, -o {output_name} -blasttab {output_name}.blast {search_opts}'
+    # # reduce output size
+    # if search_type == 'hhblits':
+    #     run_dict['search'] = f'{exe_hhblits_omp} -i {running_root}{query_basename}_hhm -d {running_root}{target_basename} -cpu {threads}, -blasttab {output_name}.blast -v 0 {search_opts}'
+    
     elif search_type == 'hhsearch':
         run_dict['search'] = ''
     else:

@@ -77,6 +77,20 @@ kegg_categories["KOGIDS"] = kegg_categories.groupby(["CATEGORY_NAME", "CATEGORY_
 kegg_categories["NUM_KOGS"] = kegg_categories.groupby(["CATEGORY_ID"]).transform(lambda x: len(x))["KOGID"]
 kegg_categories_groups = kegg_categories.loc[:,["CATEGORY_NAME", "CATEGORY_ID", "KOGIDS", "NUM_KOGS"]].drop_duplicates().dropna()
 
+# get kogs with proteins in both euk and prok; NOTE: some of these proteins don't map to our sequence db (yet)
+uid2taxid_iseuk = base_stats + "uid2taxids2iseuk.combined.tsv"
+uid2taxid_iseuk_df = pd.read_csv(uid2taxid_iseuk, sep = "\t", header = None).rename(columns={0:"UID",1:"TAXID",2:"iseuk"}).set_index("UID")
+kogs_domains = pd.merge(uid2taxid_iseuk_df, uid2kogs_df, on = "UID", how = "left")
+kogs_domains["isprok"] = ~kogs_domains["iseuk"] 
+has_prok = kogs_domains.reset_index().loc[:,["KOG","isprok"]].groupby("KOG").apply(lambda x: x.eq(True).any()).loc[:,["isprok"]].rename(columns={"isprok":"hasprok"})
+has_euk = kogs_domains.reset_index().loc[:,["KOG","iseuk"]].groupby("KOG").apply(lambda x: x.eq(True).any()).loc[:,["iseuk"]].rename(columns={"iseuk":"haseuk"})
+kogs_domains = kogs_domains.reset_index().set_index("KOG")
+kogs_hasdomains = pd.merge(kogs_domains, has_prok, on="KOG", how = "left")
+kogs_hasdomains = pd.merge(kogs_hasdomains, has_euk, on="KOG", how = "left")
+kogs_hasboth = kogs_hasdomains.loc[:,["hasprok", "haseuk"]].reset_index().drop_duplicates()
+kogs_hasboth["hasboth"] = kogs_hasboth["hasprok"] & kogs_hasboth["haseuk"]
+kogs_hasboth["haseither"] = kogs_hasboth["hasprok"] | kogs_hasboth["haseuk"]
+KOGS_w_both = kogs_hasboth[kogs_hasboth["hasboth"] == True]["KOG"]
 
 # OUTPUTS
 kogs_df.to_csv(baseurl_out + "kogs_df.tsv", sep = "\t", index=None) # intermediate file. no euk info. 
@@ -85,3 +99,4 @@ kogs_df_searchable.to_csv(baseurl_out + "kogs_df_searchable.tsv", sep = "\t", in
 fasta_stats_out.to_csv(baseurl_out + "cluster_stats.csv", sep = ",", index = None) 
 kegg_categories_df.to_csv(baseurl_out + "kegg_categories.tsv", sep = "\t", index = None) 
 kegg_categories_groups.to_csv(baseurl_out + "kegg_categories_searchable.tsv", sep = "\t", index = None)
+KOGS_w_both.to_csv(baseurl_out + "KOGs_w_both.csv")

@@ -47,7 +47,7 @@ path_taxonomy = path_core_data + 'taxonomy/'
 ncbi_taxonomy = path_taxonomy + 'ncbi_tax_231127/'
 
 # merged tax files from prok2111_as and euk72_ep with columns ['acc', 'orgid', 'superkingdom', 'class']
-merged_protein_tree_taxonomy = path_taxonomy + 'euk_prok_merged_protein.tax'
+merged_protein_tree_taxonomy =  '/data/luojaa/eukgen/mmseqs_victor/euk_prok_merged_protein_revised.tax'
 
 # protein tax mapping and species lienage mapping from NCBI
 euk72_protein_taxonomy = path_taxonomy + 'euk72_protein_taxonomy.pkl'
@@ -79,7 +79,7 @@ mmseqs_cascade_opts = {'cascade_steps': 4,
                        'cascade_clust': ''
                        }
 
-exe_realignment = '/home/luojaa/eukgen/muscle_crop_and_align.py'
+exe_realignment = '/data/luojaa/eukgen/muscle_crop_and_align.py'
 muscle_realignment_timeout = 7200
 realignment_swarm_opts = {'threads-per-process': 8,
                           'gb-per-process': '50',
@@ -99,12 +99,12 @@ cstranslate_opts = '-f -x 0.3 -c 4 -I a3m'
 # hhsuite searches
 exe_hhsuite_search = path_root + 'hhsuite_search.py'
 #note that the alignment need to be present for parsing of full names using parse_HHsuite
-hhblits_search_opts = '-n 1 -p 80 -z 1 -Z 500 -B 500 -b 1'
+hhblits_search_opts = '-n 1 -p 80 -z 1 -Z 30 -B 30 -b 1'
 hhblits_swarm_opts = {'threads-per-process': 24,
                       'gb-per-process': '100',
                       'time': '48:00:00',
                       'gres': 'lscratch:100',
-                      'logdir': '/home/tobiassonva/data/log/swarm_out/',
+                      'logdir': '/data/luojaa/log/swarm_out/',
                       'job-name': 'hhsuite_search',
                       'maxrunning': 500,
                       }
@@ -120,11 +120,11 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
                       }
 
 #iqtree saturates at 8 threads for most alignments
-microcosm_format_opts = {'original_query_DB': euk72_ep,
-                         'original_target_DB': prok2111_as,
+microcosm_format_opts = {'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep.repseq',
+                         'original_target_DB': '/data/luojaa/eukgen/mmseqs_victor/prok2111_as.repseq',
                          'taxonomy_mapping': merged_protein_tree_taxonomy,
-                         'max_euk_sequences': 30,
-                         'max_prok_sequences': 100,
+                         'max_euk_sequences': 40,
+                         'max_prok_sequences': 160,
                          'filter_entropy': 0.25,
                          'filter_length_frac': 0.2,
                          'threads': 8,
