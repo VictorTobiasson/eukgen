@@ -140,7 +140,7 @@ def weighted_midpoint_root(tree):
 # iteratively crop most similar cherry clades until size
 # monophyletic=True requires tree feature ["tax"] for every leaf
 # if monophyletic only cherries with same tax are considered
-def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophyletic=False):
+def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophyletic=False, crop_dict=None):
     # helper function to assess whether node is a cherry
     def node_is_cherry_root(cherry_root, monophyletic=False):
         cherry_children = cherry_root.children
@@ -149,8 +149,12 @@ def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophylet
         if [node.is_leaf() for node in cherry_children] == [True, True]:
 
             # if running as monophyletic and children do not share taxa skip
-            if monophyletic and cherry_children[0].taxa != cherry_children[1].taxa:
-                return
+            if monophyletic:
+                # consider largest taxa spearated by '|' by ETE3
+                t1 = cherry_children[0].taxa.split('|')[0]
+                t2 = cherry_children[1].taxa.split('|')[0]
+                if t1 != t2:
+                    return
 
             # format the cherry and return
             cherry = (cherry_root,
@@ -163,12 +167,13 @@ def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophylet
         else:
             return
 
-            # calculate number of leaves to remove to reach max_size
-
+    # calculate number of leaves to remove to reach max_size
     leaves = tree.get_leaves()
     leaves_to_remove = len(leaves) - max_size
 
-    crop_dict = {leaf.name: [leaf.name] for leaf in leaves}
+    # if no  prior cropping information in present make a naive crop_dict
+    if crop_dict is None:
+        crop_dict = {leaf.name: [leaf.name] for leaf in leaves}
 
     # if tree is small enough
     if leaves_to_remove < 1:
@@ -226,11 +231,10 @@ def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophylet
         if cherry != None:
             cherry_distance = cherry[1] + cherry[2]
 
-
             # check each element if the cherry distance is larger than for the new cherry
             # start from smaller values as this is likley faster
             # this runs in O(N) time but could be improved to N(log(N)) with binary insertion
-            # python bisect module does this but 3.9 implementation does not take key= so its annoying
+            # python bisect module does this but 3.9 implementation does not take key= so its annoying to implement
             insert_i = 0
             for i in reversed(range(len(cherries))):
                 i_distance = cherries[i][1] + cherries[i][2]
@@ -264,7 +268,8 @@ def format_leafDF(crop_dict, taxDF):
 # update existing leafDF with new dict of cropped leaves
 def update_leafDF(crop_dict, leafDF):
     inverse_dict = {acc: leaf for leaf, accs in crop_dict.items() for acc in accs}
-    leafDF['leaf'] = [inverse_dict[acc] for acc in leafDF['leaf']]
+    leaf_filtered = leafDF[leafDF.leaf != 'DELETED']
+    leafDF.loc[leaf_filtered.index, 'leaf'] = [inverse_dict[acc] for acc in leaf_filtered.leaf.values]
 
     return leafDF
 
@@ -279,17 +284,28 @@ def map_leafDF(tree, leafDF):
         # reformat value_counts as explicit pd.series to avoid string return for single entries
         tax_counts = pd.Series(leafDF.loc[leaf_acc]['class']).value_counts()
 
-        tree_leaf_dict[leaf_acc].add_feature('taxa', list(tax_counts.index.values))
+        tree_leaf_dict[leaf_acc].add_feature('taxa', '|'.join(list(tax_counts.index.values)))
         tree_leaf_dict[leaf_acc].add_feature('counts', list(tax_counts.values))
 
     return tree
 
 
 # replace an LCA node with its closes leaf, tracking mergers in crop_dict
-def collapse_LCA(node, crop_dict):
+def collapse_LCA(node, crop_dict, preserve_taxa=None):
     # find closest LCA leaf node to save
     # could be replaced with other criteria
-    save_leaf = node.get_closest_leaf()[0]
+
+    # if no save taxa provided keep closest leaf
+    if preserve_taxa is None:
+        save_leaf = node.get_closest_leaf()[0]
+
+    # else get closest leaf with taxa to maintain representative leaves
+    else:
+        tax_leaves = [(node.get_distance(leaf), leaf) for leaf in node.get_leaves() if leaf.taxa == preserve_taxa]
+        if tax_leaves != []:
+            save_leaf = min(tax_leaves, key=lambda x: x[0])[1]
+        else:
+            save_leaf = node.get_closest_leaf()[0]
 
     # list all LCA leaves which are to be removed
     leaf_names = [leaf.name for leaf in node.get_leaves() if leaf.name != save_leaf.name]
@@ -333,7 +349,7 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
         # get set of all nodes on a path from any tax_leaf to root within depth limit
         check_nodes = {node for leaf in tax_leaves for node in leaf.get_ancestors()[:max_depth]}
 
-        # add all leaves as they could contain collapsed clades
+        # add all leaves with more than one count as they contain collapsed clades
         check_nodes = check_nodes.union({leaf for leaf in tax_leaves if sum(leaf.counts) > 1})
 
         # calculate total unchecked labels on tree
@@ -341,7 +357,7 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
 
         # total unchecked labels of tax on tree
         size_tax = sum(
-            [leaf.counts[leaf.taxa.index(tax)] if tax in leaf.taxa and leaf.to_check else 0 for leaf in tax_leaves])
+            [leaf.counts[leaf.taxa.split('|').index(tax)] if tax in leaf.taxa and leaf.to_check else 0 for leaf in tax_leaves])
 
         node_weight_data = []
 
@@ -359,7 +375,7 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
             for leaf in node_leaves:
                 size_clade += sum(leaf.counts)
                 if tax in leaf.taxa:
-                    size_tax_in_clade += leaf.counts[leaf.taxa.index(tax)]
+                    size_tax_in_clade += leaf.counts[leaf.taxa.split('|').index(tax)]
 
             node_weight = (size_tax_in_clade / size_clade) * (size_tax_in_clade / size_tax)
 
@@ -408,22 +424,27 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
 # assignes taxa from taxDF to tree
 # collpses monophyletic groups and then finds LCAs of given purity from remaining leaves
 # returns a tree with the highest ranked clades by size
-def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2, min_clade_purity=0.9,
-                                         LCA_search_depth=3):
-    # create initial naive leaf mapping
-    crop_dict = {name: [name] for name in tree.get_leaf_names()}
+def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2, min_clade_purity=0.8,
+                                         LCA_search_depth=4, crop_dict=None, leafDF=None,
+                                         trim_by_individual_tax_rank=False):
+    # create initial naive leaf mapping unless provided
+    if crop_dict is None:
+        crop_dict = {name: [name] for name in tree.get_leaf_names()}
 
     print(
         f'Reducing tree with {len(crop_dict.keys())} leaves to {max_size} maintaining a clade purity of {min_clade_purity}')
 
-    leafDF = format_leafDF(crop_dict, taxDF)
+    # if no prior LeafDF is present create a new one form taxa
+    if leafDF is None:
+        leafDF = format_leafDF(crop_dict, taxDF)
+
+    # annotate tree
     tree = map_leafDF(tree, leafDF)
     taxa_list = leafDF['class'].unique()
 
     # collapse all monophyletic clades
-    tree, crop_dict = crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophyletic=True)
-
     print(f'Enforcing monophyly across {len(taxa_list)} taxa reduced tree to {len(crop_dict.keys())} leaves')
+    tree, crop_dict = crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophyletic=True)
 
     # update leafDF to remap leaves
     leafDF = update_leafDF(crop_dict, leafDF)
@@ -434,6 +455,7 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
     # collapse all identified taxa to purity limit
     n_best = 99999
     for taxa in taxa_list:
+        print(taxa)
         lca_nodes = get_multiple_soft_LCA_by_relative_purity(tree, taxa, n_best, min_clade_size, min_clade_purity,
                                                              LCA_search_depth)
 
@@ -449,7 +471,7 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
 
             else:
                 # delete leaves and track collapsed leaves
-                crop_dict = collapse_LCA(lca_node, crop_dict)
+                crop_dict = collapse_LCA(lca_node, crop_dict, preserve_taxa=taxa)
 
     print(f'After collapsing soft LCAs of high purity tree now has {len(crop_dict.keys())} leaves')
 
@@ -457,30 +479,42 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
     leafDF = update_leafDF(crop_dict, leafDF)
     tree = map_leafDF(tree, leafDF)
 
-    # calculate ranks of all taxa sizes
-    all_ranks = pd.DataFrame()
-    for taxa in leafDF['class'].unique():
-        tax_series = pd.DataFrame(leafDF[leafDF['class'] == taxa].leaf.value_counts())
-        tax_series['rank'] = tax_series.rank(method='dense', pct=True)
-        tax_series['class'] = [taxa for _ in tax_series.index]
-        all_ranks = pd.concat([all_ranks, tax_series])
+    # evaluate which excess leaves to keep by ranking individual clade sizes per taxa
+    # calculate their relative rank and delete those with worst rank
+    if trim_by_individual_tax_rank:
+        print(f'Trimming final excess leaves by taxa specific rank')
 
-    # expand to full data series sorted by leaf acc
-    rank_list = []
-    all_ranks = all_ranks.reset_index().sort_values(by=['leaf', 'class'])
-    for i, row in all_ranks.iterrows():
-        rank_list.extend([row['rank']] * row['count'])
+        # calculate ranks of all taxa sizes
+        all_ranks = pd.DataFrame()
+        for taxa in leafDF['class'].unique():
+            tax_series = pd.DataFrame(leafDF[leafDF['class'] == taxa].leaf.value_counts())
+            tax_series['rank'] = tax_series.rank(method='dense', pct=True)
+            tax_series['class'] = [taxa for _ in tax_series.index]
+            all_ranks = pd.concat([all_ranks, tax_series])
 
-    # add to leafDF sorted by leaf acc
-    leafDF = leafDF.sort_values(by=['leaf', 'class'])
-    leafDF['rank'] = rank_list
+        # expand to full data series sorted by leaf acc
+        rank_list = []
+        all_ranks = all_ranks.reset_index().sort_values(by=['leaf', 'class'])
+        for i, row in all_ranks.iterrows():
+            rank_list.extend([row['rank']] * row['count'])
 
-    # good leaves are those which are among the top 500 scoring for the best taxa
-    good_leaves = all_ranks.sort_values(by='rank', ascending=False).drop_duplicates(subset='leaf', keep='first')[0:max_size-1].leaf.values
+        # add to leafDF sorted by leaf acc
+        leafDF = leafDF.sort_values(by=['leaf', 'class'])
+        leafDF['rank'] = rank_list
+
+        # good leaves are those which are among the top (max_size) scoring for the best taxa
+        good_leaves = all_ranks.sort_values(by='rank', ascending=False).drop_duplicates(subset='leaf', keep='first')[
+                      0:max_size].leaf.values
+
+    # delete smallest clades first
+    else:
+        print(f'Trimming final excess leaves by deleting smallest clades')
+        good_leaves = leafDF[leafDF.leaf != 'DELETED'].leaf.value_counts()[0:max_size].index.values
 
     good_seqs = leafDF[leafDF.leaf.isin(good_leaves)].shape[0]
 
-    print(f'After keeping the {max_size} leaves with highest taxa-specific size rank tree clades map to {good_seqs} original sequences {round(good_seqs / leafDF.shape[0] * 100, 1)}% of original tree')
+    print(
+        f'After keeping the {max_size} leaves with highest taxa-specific size rank tree clades map to {good_seqs} original sequences {round(good_seqs / leafDF.shape[0] * 100, 1)}% of original tree')
 
     leafDF.leaf = [leaf if leaf in good_leaves else 'DELETED' for leaf in leafDF.leaf]
 
@@ -488,7 +522,15 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
         if leaf.name not in good_leaves:
             leaf.delete()
 
-    return tree, leafDF
+    # update leafDF and remap counts to tree
+    leafDF = update_leafDF(crop_dict, leafDF)
+    tree = map_leafDF(tree, leafDF)
+
+    # recreate the crop_dict as nodes have been DELETED not merged
+    print(len(leafDF.leaf.unique()))
+    crop_dict = {leaf: list(data.index.values) for leaf, data in leafDF.groupby('leaf') if leaf != 'DELETED'}
+
+    return tree, leafDF, crop_dict
 
 # --------- OBSOLETE ----------
 

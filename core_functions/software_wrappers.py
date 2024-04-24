@@ -78,19 +78,6 @@ def muscle_ensamble(base_fasta, threads, muscle_reps, super5=False, save_interme
         muscle5_command = exe_muscle5 + muscle5_maxcc_params
         subprocess.run(muscle5_command.split(), stdout=logfile, stderr=logfile)
 
-    # else:
-    #     # rename muscle-efa
-    #     print('fffff')
-    #     subprocess.run(f'mv {base_fasta}.muscle-efa {base_fasta}.muscle'.split(), stdout=logfile, stderr=logfile)
-
-    # else the output is a simple fasta, rename
-    # elif muscle_reps == 1:
-    #     subprocess.run(f'mv {base_fasta}.muscle-efa {base_fasta}.muscle'.split())
-
-    # if not save_intermediate_files:
-    #     subprocess.run(f'rm {base_fasta}.muscle.log {base_fasta}.muscle-efa'.split())
-    #     #subprocess.run(f"rm {base_fasta}*super5-tmp", shell=True)
-
     logfile.close()
 
     return f'{base_fasta}.muscle'
