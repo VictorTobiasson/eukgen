@@ -6,13 +6,18 @@ import argparse
 def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
 
     import subprocess
-    from numpy import nan
     import pandas as pd
     import core_functions.microcosm_functions as microcosm
     from paths_and_parameters import microcosm_format_opts
     from core_functions.software_wrappers import muscle_ensamble, calculate_IQtree
     from core_functions.helper_functions import fasta_to_dict, filter_by_entropy, dict_to_fasta
     from core_functions.tree_functions import format_leafDF
+
+    print(f'STARTED analysing {file_root}')
+    if save_intermediate_files:
+        print('Keeping intermediate files')
+    else:
+        print('DELETING intermediate files')
 
     if threads == -1:
         threads = microcosm_format_opts['threads']
@@ -22,8 +27,11 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
 
     print(f'Reading taxonomy mapping from {microcosm_format_opts["taxonomy_mapping"]}')
 
+
+    #TEMPORARY TESTING TAXONOMY
+    microcosm_format_opts['taxonomy_mapping'] = '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_revised.tax'
     taxonomy_mapping = pd.read_csv(microcosm_format_opts['taxonomy_mapping'], sep='\t',
-                        names=['acc', 'orgid', 'superkingdom', 'class'], index_col=0)
+                                   names=['acc', 'orgid', 'superkingdom', 'class'], index_col=0)
 
     #preapare fasta files from accession lists
     query_fasta, target_fasta = microcosm.prepare_mmseqs(file_root,
@@ -88,8 +96,8 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
 
     # merge fasta files and leaf mapping and realign
     merged_fasta = file_root + file_basename + '.merged.fasta'
-    subprocess.run(f'cat {query_fasta} {target_fasta} >> {merged_fasta}', shell=True)
-    subprocess.run(f'cat {query_fasta + ".leaf_mapping"} {target_fasta + ".leaf_mapping"} >> {merged_fasta + ".leaf_mapping"}', shell=True)
+    subprocess.run(f'cat {query_fasta} {target_fasta} > {merged_fasta}', shell=True)
+    subprocess.run(f'cat {query_fasta + ".leaf_mapping"} {target_fasta + ".leaf_mapping"} > {merged_fasta + ".leaf_mapping"}', shell=True)
 
     print(f'Merged prok and euk files and aligning using muscle')
     muscle_fasta = muscle_ensamble(merged_fasta,
@@ -171,8 +179,12 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
     merged_data.to_csv(file_root + file_basename + '.merged.tree_data.tsv', sep='\t')
 
     # do cleanup
-    if not save_intermediate_files:
-        subprocess.run(f'rm {file_root}/*.fasttree {file_root}/*.log {file_root}/*.famsa {file_root}/*.leaf_mapping'.split())
+    if save_intermediate_files == False:
+        subprocess.run(f'rm {query_fasta} {target_fasta}'.split())
+        subprocess.run(f'rm {merged_fasta}.muscle-efa {merged_fasta}.muscle.log'.split())
+
+        subprocess.run(f'rm {file_root}/*.fasttree {file_root}/*muscle.log {file_root}/*.famsa* {file_root}/*.uncropped', shell=True)
+        subprocess.run(f'rm {file_root}/*.contree {file_root}/*.bionj {file_root}/*.gz {file_root}/*.mldist {file_root}/*.nex {file_root}/*.ufboot', shell=True)
 
 
 #argparse define

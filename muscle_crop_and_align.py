@@ -15,9 +15,6 @@ def realign_cluster_fasta(fasta, threads, max_sequences=250, filter_entropy=0.5,
     with open(fasta, 'r') as fastafile:
         size = fastafile.read().count('>')
 
-    # seqs = fasta_to_dict(file=fasta)
-    # size = len(seqs.keys())
-
     if size == 1:
         print(f' There is only one seuqnce in {fasta} ({size}), will skip')
         return
@@ -48,7 +45,6 @@ def realign_cluster_fasta(fasta, threads, max_sequences=250, filter_entropy=0.5,
     else:
         dict_to_fasta(aln_filter, write_file=fasta)
         subprocess.run(f'rm {fasta}.muscle {fasta}.muscle-efa {fasta}.muscle.log'.split())
-
 
     return
 

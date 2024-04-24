@@ -119,7 +119,7 @@ def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_i
     if taxDF is not None:
 
         from core_functions.tree_functions import crop_leaves_to_size_considering_taxa
-        tree, leafDF = crop_leaves_to_size_considering_taxa(tree, taxDF, max_leaf_size,
+        tree, leafDF, crop_dict = crop_leaves_to_size_considering_taxa(tree, taxDF, max_leaf_size,
                                                             min_clade_size=2, min_clade_purity=0.9, LCA_search_depth=3)
 
         # save leaf mappings from DF
@@ -207,12 +207,10 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
         if len(node.children) == 1 or (node.is_leaf() and node.name == ''):
             node.delete()
 
-    # for uncropped trees, collapse nodes to
-
     # annotate tree with taxonomic info accounting for collapsed branches
     tree = map_leafDF(tree, leafDF)
 
-    # find best bacterial soft LCA for all taxa
+    # find the best bacterial soft LCA for all taxa
     taxa_list = leafDF[(leafDF.superkingdom.isin(['Bacteria', 'Archaea'])) & (leafDF.leaf != 'DELETED')][
         'class'].unique()
 
@@ -248,6 +246,12 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     for node_data in euk_lca_nodes:
         print(f'{"Eukarya:":<30} size: {node_data[1]}\t weight: {round(node_data[3], 2)}')
     print()
+
+    # if more than three good euk nodes are identified warm and restruct analysis
+    if len(euk_lca_nodes) > 3:
+        print(f'WARNING! High paraphyly in euakryotes, considering the three best clades of {len(euk_lca_nodes)} total!')
+        euk_lca_nodes = euk_lca_nodes[:3]
+
 
     # revert to original eukaryotic classes on tree
     leafDF.columns = ['leaf', 'superkingdom', 'class', 'rank', 'filter_class']
