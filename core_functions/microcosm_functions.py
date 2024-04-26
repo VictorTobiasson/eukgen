@@ -155,16 +155,19 @@ def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_i
 
     return base_fasta
 
-
+# main analysis function for tree annotation
+# main analysis function for tree annotation
+# assigns taxonomy to leaves, identifies and trims outliers, assigns LCA nodes and performs distance calculations
+# outputs a treeDF with tabulated data for each eukaryotic clade and its corresponding prokaryotic sister-clades
 def tree_analysis(tree_file, leaf_mapping, tree_name,
                   outlier_CDF_low=0,
                   outlier_CDF_high=0.99,
                   tree_crop_cutoff=0.30,
                   delete_outliers=True,
-                  prok_clade_size=1,
-                  prok_clade_purity=0.8,
-                  euk_clade_size=8,
-                  euk_clade_purity=0.9,
+                  prok_clade_size=2,
+                  prok_clade_purity=0.80,
+                  euk_clade_size=5,
+                  euk_clade_purity=0.8,
                   exclude_nested_LCAs=True,
                   consider_closest_n_prok_LCAs=10):
 
@@ -172,7 +175,6 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     from ete3 import Tree
     from core_functions.tree_functions import get_outlier_nodes_by_lognorm, map_leafDF, \
         get_multiple_soft_LCA_by_relative_purity, weighted_midpoint_root
-    from multiprocessing import current_process
 
     # load tree
     print(f'Reading Tree from {tree_file}')
@@ -196,6 +198,10 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
                                                                                    outlier_CDF_high,
                                                                                    deletion_cutoff=tree_crop_cutoff)
 
+    # update leafDF with deleted nodes
+    outlier_leaves = [leaf.name for node in outlier_nodes for leaf in node.get_leaves()]
+    leafDF.loc[outlier_leaves, 'leaf'] = 'DELETED'
+
     # detach all outlier clades
     if delete_outliers:
         for node in outlier_nodes:
@@ -214,44 +220,44 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     taxa_list = leafDF[(leafDF.superkingdom.isin(['Bacteria', 'Archaea'])) & (leafDF.leaf != 'DELETED')][
         'class'].unique()
 
-    prok_lca_nodes = {}
+    lca_dict = {}
     for taxa in sorted(taxa_list):
-        prok_lca_nodes[taxa] = get_multiple_soft_LCA_by_relative_purity(tree, taxa,
-                                                                        n_best=1,
+        lca_dict[taxa] = get_multiple_soft_LCA_by_relative_purity(tree, taxa,
+                                                                        n_best=9999,
                                                                         min_size=prok_clade_size,
                                                                         min_purity=prok_clade_purity,
                                                                         max_depth=10)
 
     # find all euk sof LCAs meeting criteria
-    euk_lca_nodes = get_multiple_soft_LCA_by_relative_purity(tree, 'Eukaryota',
+    lca_dict['Eukaryota'] = get_multiple_soft_LCA_by_relative_purity(tree, 'Eukaryota',
                                                              n_best=9999,
                                                              min_size=euk_clade_size,
                                                              min_purity=euk_clade_purity,
                                                              max_depth=10)
 
-    # display LCA results
-    accepted_prok_taxa = [taxa for taxa, node in prok_lca_nodes.items() if node != []]
-    rejected_prok_taxa = [taxa for taxa, node in prok_lca_nodes.items() if node == []]
-
-    print(f'Found acceptable taxa with size > {prok_clade_size} and purity {prok_clade_purity} for: ')
-    for taxa in accepted_prok_taxa:
-        node_data = prok_lca_nodes[taxa]
-        print(f'{taxa + ":":<30} size: {node_data[0][1]:<8} weight: {round(node_data[0][3], 2)}')
-
-    print(f'\nNo acceptable LCA with size > {prok_clade_size} and purity {prok_clade_purity} for:')
-    print(*sorted(rejected_prok_taxa), sep='\n')
 
     # display LCA results
-    print(f'\nFound {len(euk_lca_nodes)} LCA nodes for Eukarya')
-    for node_data in euk_lca_nodes:
-        print(f'{"Eukarya:":<30} size: {node_data[1]}\t weight: {round(node_data[3], 2)}')
+    accepted_taxa = [taxa for taxa, node in lca_dict.items() if node != [] and taxa != 'Eukaryota']
+    rejected_taxa = [taxa for taxa, node in lca_dict.items() if node == [] and taxa != 'Eukaryota']
+
+    print(f'Found acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for: ')
+    for taxa in accepted_taxa:
+        node_data = lca_dict[taxa]
+        for node in sorted(node_data, key=lambda x:-x[1]):
+            print(f'    {taxa + ":":<25} size: {node[1]}\t weight: {round(node[3], 2)}')
+
+    print(f'\nNo acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for:')
+    print(*sorted(rejected_taxa), sep='\n')
+
+    print(f'\nFound {len(lca_dict["Eukaryota"])} LCA nodes for Eukaryota')
+    for node_data in lca_dict['Eukaryota']:
+        print(f'    {"Eukarya:":<25} size: {node_data[1]}\t weight: {round(node_data[3], 2)}')
     print()
 
-    # if more than three good euk nodes are identified warm and restruct analysis
-    if len(euk_lca_nodes) > 3:
-        print(f'WARNING! High paraphyly in euakryotes, considering the three best clades of {len(euk_lca_nodes)} total!')
-        euk_lca_nodes = euk_lca_nodes[:3]
-
+    # if more than three good euk nodes are identified warn and restruct analysis
+    if len(lca_dict['Eukaryota']) > 3:
+        print(f'WARNING! High paraphyly in Eukaryota, considering the three largest clades of {len(lca_dict["Eukaryota"])} total!')
+        lca_dict['Eukaryota'] = lca_dict['Eukaryota'][:3]
 
     # revert to original eukaryotic classes on tree
     leafDF.columns = ['leaf', 'superkingdom', 'class', 'rank', 'filter_class']
@@ -260,80 +266,60 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     # calculate distances and format DataFrame
     euk_dist_dict = {}
 
-    all_LCA_nodes = [prok_lca_nodes[taxa][0][0] for taxa in accepted_prok_taxa] + [node[0] for node in euk_lca_nodes]
+    # separate euk and prok LCA nodes
+    all_LCA_data = [node for taxa, nodes in lca_dict.items() for node in nodes]
+    all_LCA_nodes = [node[0] for node in all_LCA_data]
+    euk_LCA_nodes = [node for node in all_LCA_data if node[0].lca_taxa == 'Eukaryota']
+    prok_LCA_nodes = [node for node in all_LCA_data if node[0].lca_taxa != 'Eukaryota']
 
     # for all eukaryotic nodes
-    for i, euk_node in enumerate(euk_lca_nodes):
+    for i, euk_node_data in enumerate(euk_LCA_nodes):
 
-        # store node reference
-        euk_node_ref = euk_node[0]
-        euk_clade_is_decendant = False
-
-        # node representative is closest_leaf in clade
-        euk_node_acc = euk_node[0].get_closest_leaf()[0].name
-
-        # remove all euk LCAs that are decendants of any LCA node
-        if any(node in all_LCA_nodes for node in euk_node[0].get_ancestors()):
-            print(f'Euk LCA node {euk_node_acc} with size: {euk_node[1]} was excluded as it is a child of another LCA node')
-
-            # omit node from annotation on tree
-            euk_clade_is_decendant = True
-
-        # check whether clade is collapsed
-        euk_clade_is_leaf = euk_node[0].is_leaf()
+        # store node reference and basic information
+        euk_node = euk_node_data[0]
+        euk_node_size = euk_node_data[1]
+        euk_clade_is_leaf = euk_node.is_leaf()
+        euk_node_acc = euk_node.get_closest_leaf()[0].name
 
         # for all the best prok nodes per taxa
-        for j, taxa in enumerate(accepted_prok_taxa):
+        for j, prok_node_data in enumerate(prok_LCA_nodes):
 
-            # extract best node from prok LCAs
-            prok_node = prok_lca_nodes[taxa][0]
-            prok_node_acc = prok_node[0].get_closest_leaf()[0].name
+            # store node reference and basic information
+            prok_node = prok_node_data[0]
+            prok_node_acc = prok_node.get_closest_leaf()[0].name
+            prok_node_is_clade = prok_node.is_leaf()
 
-            # store node reference
-            prok_node_ref = prok_node[0]
-            prok_clade_is_decendant = False
-
-            # remove all prok LCAs that are decendant of the current euk LCAs
-            if any(node in all_LCA_nodes for node in prok_node[0].get_ancestors()):
-                print(f'Prok LCA node for {taxa} will be excluded as it is a child of another LCA node')
-
-                # omit node from annotation on tree
-                prok_clade_is_decendant = True
-
-            prok_node_is_clade = prok_node[0].is_leaf()
-
+            # calculate distance metrics
             # absolute node-to-node distance
-            dist = euk_node[0].get_distance(prok_node[0])
-            top_dist = euk_node[0].get_distance(prok_node[0], topology_only=True)
+            dist = euk_node.get_distance(prok_node)
+            top_dist = euk_node.get_distance(prok_node, topology_only=True)
 
             # gabaldon stem length 2016 calculation
-            lca_node_prok_euk = euk_node[0].get_common_ancestor(prok_node[0])
-            raw_stem_length = lca_node_prok_euk.get_distance(euk_node[0])
+            lca_node_prok_euk = euk_node.get_common_ancestor(prok_node)
+            raw_stem_length = lca_node_prok_euk.get_distance(euk_node)
 
             # cannot normalize if clade is leaf
             if euk_clade_is_leaf:
                 stem_length = raw_stem_length
-
                 median_euk_branch_length = -1
 
             # otherwise normalise as per gabaldon
             else:
-                euk_branch_lengths = pd.Series([euk_node[0].get_distance(leaf) for leaf in euk_node[0].get_leaves()])
+                euk_branch_lengths = pd.Series([euk_node.get_distance(leaf) for leaf in euk_node.get_leaves()])
                 median_euk_branch_length = euk_branch_lengths.median()
                 stem_length = raw_stem_length / median_euk_branch_length
 
             # save data as temp_index: treename_"clade_number", clade_name, clade_size, prok_clade_name, prok_taxa...
             # final value of False is for later filtering purposes
-            euk_dist_dict[str(i) + '_' + str(j)] = [tree_name, euk_node_acc, euk_node[1], euk_node[3],
-                                                    euk_clade_is_leaf, euk_clade_is_decendant, prok_node_acc, prok_node[1], prok_node[3],
-                                                    prok_node_is_clade, prok_clade_is_decendant, taxa, dist, top_dist,
-                                                    raw_stem_length, median_euk_branch_length, stem_length,
-                                                    euk_node_ref, prok_node_ref, False]
+            euk_dist_dict[str(i) + '_' + str(j)] = [tree_name, euk_node_acc, euk_node_data[1], euk_node_data[3],
+                                                    euk_clade_is_leaf, prok_node_acc, prok_node_data[1], prok_node_data[3],
+                                                    prok_node_is_clade, prok_node.lca_taxa, dist, top_dist, raw_stem_length, median_euk_branch_length, stem_length,
+                                                    euk_node, prok_node, False]
 
     tree_data = pd.DataFrame.from_dict(euk_dist_dict, orient='index',
-                                       columns=['tree_name', 'euk_clade_rep', 'euk_clade_size', 'euk_clade_weight',
-                                                'euk_leaf_clade', 'euk_decendant_clade', 'prok_clade_rep', 'prok_clade_size', 'prok_clade_weight',
-                                                'prok_leaf_clade', 'prok_decendant_clade', 'prok_taxa', 'dist', 'top_dist',
+                                       columns=['tree_name', 'euk_clade_rep', 'euk_clade_size', 'euk_clade_weight','euk_leaf_clade', 
+                                                'prok_clade_rep', 'prok_clade_size', 'prok_clade_weight',
+                                                'prok_leaf_clade', 'prok_taxa', 'dist', 'top_dist',
                                                 'raw_stem_length', 'median_euk_leaf_dist', 'stem_length',
                                                 'euk_node_ref', 'prok_node_ref', 'include'])
 
@@ -345,26 +331,25 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     tree_data.sort_values(by=['top_dist', 'dist'], ascending=True, inplace=True)
     tree_data.set_index('tree_name', inplace=True)
 
-
-    # filter nested clades
+    # check if LCA is decendants of any LCA other node
+    # this CURRENTLY breaks downstream formatting of contraints analysis
     if exclude_nested_LCAs:
-        print(f'Filtering to remove nested LCAs')
+        print(f'Filtering to remove nested LCAs, nodes that are children of other nodes')
+        nested_nodes = []
+        for test_node in all_LCA_nodes:
 
-        tree_data_initial_length = tree_data.shape[0]
+            if any(node in all_LCA_nodes for node in test_node.get_ancestors()):
+                test_node_acc = test_node.get_closest_leaf()[0].name
+                print(f'EXCLUDING LCA node {test_node_acc} for {test_node.lca_taxa}')
+                nested_nodes.append(test_node)
 
-        # if a prok clade is flagged as a decendant of any euk node remove all instances
-        prok_decendant_LCAs = tree_data[(tree_data.prok_decendant_clade == True)].prok_node_ref.unique()
-        tree_data = tree_data[~(tree_data.prok_node_ref.isin(prok_decendant_LCAs))]
+        # exclude nested LCAs
+        tree_data['decendant'] = [any(node in nested_nodes for node in data) for data in tree_data[['euk_node_ref', 'prok_node_ref']].values]
+        tree_data = tree_data[~(tree_data.decendant)]
 
-        # likewise for EUK
-        euk_decendant_LCAs = tree_data[(tree_data.euk_decendant_clade == True)].euk_node_ref.unique()
-        tree_data = tree_data[~(tree_data.euk_node_ref.isin(euk_decendant_LCAs))]
+        print()
 
-        print(f'Removed {len(euk_decendant_LCAs)} nested Eukaryote nodes')
-        print(f'Removed {len(prok_decendant_LCAs)} nested Prokaryote nodes\n')
-
-
-    # loop through data including only n closest prok LCas per euk taxa
+    # loop through data including only n closest prok LCAs per euk LCAs
     print(f'Consider only closest clades for downstream analysis, clade limit per Eukaryote clade is {consider_closest_n_prok_LCAs}')
 
     for euk_clade_rep, data in tree_data.groupby('euk_clade_rep'):
@@ -384,17 +369,20 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
     #delete superflous LCA data and node references
     tree_data = tree_data[tree_data.include]
-    tree_data.drop(['euk_node_ref', 'prok_node_ref', 'include'], axis=1, inplace=True)
+    tree_data.drop(['euk_node_ref', 'prok_node_ref', 'include', 'decendant'], axis=1, inplace=True)
 
     tree.ladderize()
 
     return tree, tree_data
 
 
+
 # generate a set of constraint trees for each euk_LCA * prok_LCA pair for IQtree2 -g constraint testing
 # ((euk_LCA, prok_sister),(remaining_prok));
 # return a dataframe of jobs to be run
-def format_constraint_analysis(root, basename, tree_data):
+# clade size dictates the maximum number of sequences forming the contrained clades
+# CURRENLTY ONLY ALLOWING FOR VARIABLE EUK CLADE SIZE ONLY USING ONE PROK SEQUENCE
+def format_constraint_analysis(root, basename, tree_data, clade_size=10):
 
     from core_functions.helper_functions import fasta_to_dict, dict_to_fasta
     import pandas as pd
@@ -428,15 +416,12 @@ def format_constraint_analysis(root, basename, tree_data):
     constraint_data = {}
     index = 0
 
-    # evaluate all euk_LCA nodes individually againsta all annotated prok_LCAs
+    # evaluate all euk_LCA nodes individually against all annotated prok_LCAs
     for euk_node in euk_LCA_nodes:
 
         # node representative is closest_leaf in clade
         euk_node_acc = euk_node.get_closest_leaf()[0].name
-
-        euk_accs = {node for node in euk_node.get_leaf_names()}
-
-        print(euk_node_acc)
+        euk_accs = {node for node in euk_node.get_leaf_names()[:clade_size]}
 
         # output file for filtered alignment saving
         msafile_out = f'{constraint_base}/{euk_node_acc}_constraint.fasta.muscle'
@@ -516,9 +501,8 @@ def parse_IQtree_z_output(iqtreefile, tree_names=None):
     if tree_names is None:
         tree_names = ['tree_' + str(i) for i in range(len(iqtree_data))]
 
-        # split data lines and format into dict for pandas
+    # split data lines and format into dict for pandas
     iqtree_dict = {}
-
     for i, line in enumerate(iqtree_data):
         data_list = line.split()
         iqtree_dict[tree_names[i]] = [i for i in data_list[1:]]
@@ -532,8 +516,7 @@ def parse_IQtree_z_output(iqtreefile, tree_names=None):
     for col in ['logL', 'deltaL', 'bp-RELL', 'p-KH', 'p-SH', 'c-ELW', 'p-AU']:
         test_data[col] = pd.to_numeric(test_data[col])
 
-    test_data = test_data.reset_index(names='prok_taxa')
-
+    test_data = test_data.reset_index(names='constraint_tree_id')
     return test_data
 
 
@@ -547,43 +530,39 @@ def run_constraint_analysis(constraint_job_data, evo_model, threads):
         constraint_tree = row.constraint_tree
 
         print(f'Running IQtree2 constrained tree analysis for {constraint_tree}')
-
         with open(f'{constraint_tree}.log', 'a') as iqtree_logfile:
             # run 1000 ultrafast bootstraps use given model, add -bnni for UFBoot model violations
             iqtree_command = f'{exe_iqtree} -s {alignment} -m {evo_model} -g {constraint_tree} --prefix {constraint_tree} --threads {threads} -B 1000 --redo'
             subprocess.run(iqtree_command.split(), stdout=iqtree_logfile, stderr=iqtree_logfile)
 
     # concatenate all resulting treefiles for tree testing per euk_LCA
-
     test_data_list = []
 
     for euk_LCA, job_data in constraint_job_data.groupby('euk_clade_rep'):
-        alignment = job_data.constraint_msa[0]
+        alignment = job_data.constraint_msa.values[0]
 
         # maintain DF order for bash cat as iqtree -z follows input order
         bash_cat_order = ' '.join([treefile + '.treefile' for treefile in job_data.constraint_tree])
-
         forest_file = f'{alignment}.forestfile'
         subprocess.run(f"cat {bash_cat_order} > {forest_file}", shell=True)
 
         # run iqtree tree evaluation
         with open(f'{alignment}.log', 'a') as iqtree_logfile:
-
             print(f'Concatenating {job_data.shape[0]} trees for {euk_LCA} and evaluating')
-
             iqtree_command = f'{exe_iqtree} -s {alignment} -m {evo_model} -z {forest_file} -n 0 -zb 10000 -au --redo'
             subprocess.run(iqtree_command.split(), stdout=iqtree_logfile, stderr=iqtree_logfile)
 
-        tree_names = job_data.prok_taxa.values
-
+        # format output database and append to data_list
         iqtreefile = alignment + '.iqtree'
-
-        test_data = parse_IQtree_z_output(iqtreefile, tree_names)
+        test_data = parse_IQtree_z_output(iqtreefile, tree_names=None)
         test_data['euk_clade_rep'] = [euk_LCA] * test_data.shape[0]
         test_data['prok_clade_rep'] = job_data.prok_clade_rep.values
+        test_data['prok_taxa'] = [taxa for taxa in job_data['prok_taxa']]
         test_data_list.append(test_data)
 
+    # merge all data lists and return
     all_test_data = pd.concat(test_data_list)
+    all_test_data.drop('constraint_tree_id', axis=1, inplace=True)
 
     return all_test_data
 
