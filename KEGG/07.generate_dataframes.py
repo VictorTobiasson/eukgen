@@ -77,8 +77,14 @@ kegg_categories["KOGIDS"] = kegg_categories.groupby(["CATEGORY_NAME", "CATEGORY_
 kegg_categories["NUM_KOGS"] = kegg_categories.groupby(["CATEGORY_ID"]).transform(lambda x: len(x))["KOGID"]
 kegg_categories_groups = kegg_categories.loc[:,["CATEGORY_NAME", "CATEGORY_ID", "KOGIDS", "NUM_KOGS"]].drop_duplicates().dropna()
 
+uid2taxid_iseuk = baseurl_stats + "uid2taxids2iseuk.combined.tsv"
+uid2taxid_iseuk_df = pd.read_csv(uid2taxid_iseuk, sep = "\t", header = None).rename(columns={0:"UID",1:"TAXID",2:"iseuk"}).set_index("UID")
+
+
+uid2taxid_iseuk_df
+
 # get kogs with proteins in both euk and prok; NOTE: some of these proteins don't map to our sequence db (yet)
-uid2taxid_iseuk = base_stats + "uid2taxids2iseuk.combined.tsv"
+uid2taxid_iseuk = baseurl_stats + "uid2taxids2iseuk.combined.tsv"
 uid2taxid_iseuk_df = pd.read_csv(uid2taxid_iseuk, sep = "\t", header = None).rename(columns={0:"UID",1:"TAXID",2:"iseuk"}).set_index("UID")
 kogs_domains = pd.merge(uid2taxid_iseuk_df, uid2kogs_df, on = "UID", how = "left")
 kogs_domains["isprok"] = ~kogs_domains["iseuk"] 
