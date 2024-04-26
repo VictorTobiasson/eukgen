@@ -130,6 +130,9 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
                                               file_basename,
                                               delete_outliers=True)
 
+    # write to file before
+    #tree_data.to_csv(file_root + file_basename + '.merged.tree_data.tsv', sep='\t')
+
     # draw final master tree and write to file
     #color_tree = microcosm.color_tree(annot_tree)
     annot_tree.write(features=['LCA', 'counts', 'dist', 'name', 'support', 'taxa'], outfile=treefile + '.annot',

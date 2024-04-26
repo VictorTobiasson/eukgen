@@ -381,7 +381,9 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
 
             # save weight values if they are pure and large enough and weight is reasonable (rare cases of nested clades?)
             if (size_tax_in_clade / size_clade >= min_purity) and (size_tax_in_clade >= min_size) and (node_weight <= 1):
-                node_weight_data.append([node, size_clade, size_tax_in_clade, node_weight])
+                if not node.is_root():
+                    node.add_feature('lca_taxa', tax)
+                    node_weight_data.append([node, size_clade, size_tax_in_clade, node_weight])
 
         # best node is node with highest weight
         node_weight_data = sorted(node_weight_data, key=lambda x: x[-1], reverse=True)
@@ -455,7 +457,6 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
     # collapse all identified taxa to purity limit
     n_best = 99999
     for taxa in taxa_list:
-        print(taxa)
         lca_nodes = get_multiple_soft_LCA_by_relative_purity(tree, taxa, n_best, min_clade_size, min_clade_purity,
                                                              LCA_search_depth)
 
@@ -527,7 +528,6 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
     tree = map_leafDF(tree, leafDF)
 
     # recreate the crop_dict as nodes have been DELETED not merged
-    print(len(leafDF.leaf.unique()))
     crop_dict = {leaf: list(data.index.values) for leaf, data in leafDF.groupby('leaf') if leaf != 'DELETED'}
 
     return tree, leafDF, crop_dict

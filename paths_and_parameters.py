@@ -47,8 +47,8 @@ path_taxonomy = path_core_data + 'taxonomy/'
 ncbi_taxonomy = path_taxonomy + 'ncbi_tax_231127/'
 
 # merged tax files from prok2111_as and euk72_ep with columns ['acc', 'orgid', 'superkingdom', 'class']
-# merged_protein_tree_taxonomy =  '/data/luojaa/eukgen/mmseqs_victor/euk_prok_merged_protein_revised.tax'
-merged_protein_tree_taxonomy = "/data/luojaa/taxids/kegg_new_classes.mcrcsm.tsv"
+merged_protein_tree_taxonomy =  '/data/luojaa/eukgen/mmseqs_victor/euk_prok_merged_protein_revised.tax'
+#merged_protein_tree_taxonomy = "/data/luojaa/taxids/kegg_new_classes.mcrcsm.tsv"
 
 # protein tax mapping and species lienage mapping from NCBI
 euk72_protein_taxonomy = path_taxonomy + 'euk72_protein_taxonomy.pkl'
@@ -129,15 +129,15 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
                       }
 
 #iqtree saturates at 8 threads for most alignments
-microcosm_format_opts = {'original_query_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
-                         'original_target_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
+microcosm_format_opts = {'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep/euk72_ep.repseq',
+                         'original_target_DB': '/data/luojaa/eukgen/mmseqs_victor/prok2111_as/prok2111_as.repseq',
                          'taxonomy_mapping': merged_protein_tree_taxonomy,
-                         'max_euk_sequences': 40,
-                         'max_prok_sequences': 160,
+                         'max_euk_sequences': 20,
+                         'max_prok_sequences': 80,
                          'filter_entropy': 0.25,
                          'filter_length_frac': 0.2,
                          'threads': 8,
-                         'muscle_reps': 1,
+                         'muscle_reps': 5,
                          'muscle_timeout': 3600,
                          'evo_model_params': '-m MFP -mset LG,Q.pfam --cmin 4 --cmax 12'
                          }
