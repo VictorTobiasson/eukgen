@@ -23,3 +23,5 @@ tmp/*
 microcosm/*.csv
 microcosm/*.tsv
 microcosm/*log*
+notebooks/.ipynb_checkpoints/*
+core_functions/__pycache__/*
