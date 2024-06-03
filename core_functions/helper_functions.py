@@ -5,8 +5,8 @@ import time
 import numpy as np
 
 
-#helper functions involved in IO
-#small parsing tasks, general functions or repeated calculations
+# helper functions involved in IO
+# small parsing tasks, general functions or repeated calculations
 
 # SEQUENCE ALIGNMENTS OPERATIONS
 
@@ -40,12 +40,16 @@ def fasta_to_dict(fastastring=None, file=None):
         for char in set(seq):
             if char in blacklist:
                 seq = seq.replace(char, 'A')
-                #print(f'WARNING: {key} Replaced illegal {char} with A')
+                # print(f'WARNING: {key} Replaced illegal {char} with A')
 
         fastas[key] = seq
     return fastas
 
 
+len({1:1}.keys())
+
+
+# +
 # returns simple single line fasta from {id:seq} dict
 def dict_to_fasta(seq_dict, write_file=False, verbose=True):
     fasta_str = '\n'.join(f'>{key}\n{value}' for key, value in seq_dict.items())
@@ -58,6 +62,33 @@ def dict_to_fasta(seq_dict, write_file=False, verbose=True):
 
     return fasta_str
 
+def dict_to_fasta_len(seq_dict, write_file=False, verbose=True, maxlen = 10000):
+    fasta_str = '\n'.join(f'>{key}\n{value}' for key, value in seq_dict.items() if len(value) < maxlen)
+
+    if write_file != False:
+        with open(write_file, 'w') as outfile:
+            outfile.write(fasta_str)
+        if verbose:
+            print(f'Wrote {write_file}')
+
+    return fasta_str
+
+def dict_to_fastas(seq_dict, outfile_basepath, num_fastas):
+    from itertools import islice
+
+    def chunks(data, SIZE=10000):
+        it = iter(data)
+        for i in range(0, len(data), SIZE):
+            yield {k:data[k] for k in islice(it, SIZE)}
+    size = len(seq_dict.keys()) // num_fastas
+    chunk_no = 0
+    for item in chunks(seq_dict, size):
+        outfile_path = outfile_basepath.replace("fasta", f"{chunk_no}.fasta")
+        chunk_no += 1
+        dict_to_fasta(item, write_file=outfile_path, verbose=True)
+
+
+# -
 
 # small helper for pkl parsing
 def load_pkl(pkl_file):

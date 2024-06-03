@@ -80,6 +80,7 @@ mmseqs_cascade_opts = {'cascade_steps': 4,
                        'cascade_clust': ''
                        }
 
+# +
 exe_realignment = path_root + 'muscle_crop_and_align.py'
 muscle_realignment_timeout = 4000
 realignment_swarm_opts = {'threads-per-process': 8,
@@ -90,6 +91,24 @@ realignment_swarm_opts = {'threads-per-process': 8,
                           'maxrunning': 1000,
                           }
 
+exe_reannotation = "/data/luojaa/proteinfer/proteinfer.py"
+proteinfer_swarm_opts = {'threads-per-process': 8,
+                          'gb-per-process': '10',
+                          'time': '72:00:00',
+                          'logdir': '/data/luojaa/log/swarm_out/',
+                          'job-name': 'proteinfer',
+                          'maxrunning': 1000,
+                          }
+clean_swarm_opts = {'threads-per-process': 8,
+                          'gb-per-process': '25',
+                          'time': '72:00:00',
+                          'logdir': '/data/luojaa/log/swarm_out/',
+                          'job-name': 'clean_lscratch',
+                          'maxrunning': 1000,
+                          'gres': 'lscratch:10',
+                          }
+# -
+
 # hhsuite database formatting
 hhconsensus_opts = '-M 50 -maxres 65535 -v 0'
 # hhmake requires at least 2 shown sequences or else it segfaults...?
@@ -99,7 +118,7 @@ cstranslate_opts = '-f -x 0.3 -c 4 -I a3m'
 # hhsuite searches
 exe_hhsuite_search = path_root + 'hhsuite_search.py'
 #note that the alignment need to be present for parsing of full names using parse_HHsuite
-hhblits_search_opts = '-n 1 -p 80 -z 1 -Z 20 -B 20 -b 1'
+hhblits_search_opts = '-n 3 -p 80 -z 1 -Z 20 -B 20 -b 1'
 hhblits_swarm_opts = {'threads-per-process': 24,
                       'gb-per-process': '100',
                       'time': '48:00:00',
@@ -123,21 +142,24 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
                       'gb-per-process': '30',
                       'time': '48:00:00',
                       'gres': 'lscratch:300',
-                      'logdir': '/data/tobiassonva/data/log/swarm_out/',
+                      'logdir': '/data/luojaa/log/swarm_out/',
                       'job-name': 'hhsuite_search',
                       'maxrunning': 500,
                       }
 
 #iqtree saturates at 8 threads for most alignments
-microcosm_format_opts = {'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep/euk72_ep.repseq',
+microcosm_format_opts = {
+                         # 'original_query_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
+                         # 'original_target_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
+                         'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep/euk72_ep.repseq',
                          'original_target_DB': '/data/luojaa/eukgen/mmseqs_victor/prok2111_as/prok2111_as.repseq',
                          'taxonomy_mapping': merged_protein_tree_taxonomy,
-                         'max_euk_sequences': 20,
-                         'max_prok_sequences': 80,
-                         'filter_entropy': 0.25,
+                         'max_euk_sequences': 30,
+                         'max_prok_sequences': 70,
+                         'filter_entropy': 0.2,
                          'filter_length_frac': 0.2,
                          'threads': 8,
-                         'muscle_reps': 5,
+                         'muscle_reps': 3,
                          'muscle_timeout': 3600,
                          'evo_model_params': '-m MFP -mset LG,Q.pfam --cmin 4 --cmax 12'
                          }

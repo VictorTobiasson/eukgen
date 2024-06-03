@@ -6,7 +6,7 @@ import sys
 module_path = "/data/luojaa/eukgen/"
 if module_path not in sys.path:
     sys.path.append(module_path)
-    
+
 def merge_hhsuite_search_results_exe(search_root, output_basename, chunk_no, pairwise_cov = False, probability = False):
     from core_functions.hhsuite_functions import merge_hhsuite_search_results
 

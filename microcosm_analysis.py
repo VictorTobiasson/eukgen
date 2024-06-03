@@ -1,4 +1,3 @@
-
 import argparse
 
 
@@ -189,6 +188,14 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
         subprocess.run(f'rm {file_root}/*.fasttree {file_root}/*muscle.log {file_root}/*.famsa* {file_root}/*.uncropped', shell=True)
         subprocess.run(f'rm {file_root}/*.contree {file_root}/*.bionj {file_root}/*.gz {file_root}/*.mldist {file_root}/*.nex {file_root}/*.ufboot', shell=True)
 
+        # post hoc clean files
+#     if save_intermediate_files == True:
+#         subprocess.run(f'rm {file_root}/*.query.fasta {file_root}/*.target.fasta'.split(), shell=True)
+#         subprocess.run(f'rm {file_root}/*.muscle-efa {file_root}/*.muscle.log'.split(), shell=True)
+
+#         subprocess.run(f'rm {file_root}/*.fasttree {file_root}/*muscle.log {file_root}/*.famsa* {file_root}/*.uncropped', shell=True)
+#         subprocess.run(f'rm {file_root}/*.contree {file_root}/*.bionj {file_root}/*.gz {file_root}/*.mldist {file_root}/*.nex {file_root}/*.ufboot', shell=True)
+
 
 #argparse define
 parser = argparse.ArgumentParser(description='Evaluate microcosm')
@@ -206,18 +213,6 @@ if __name__ == '__main__':
                   args.file_basename,
                   args.threads,
                   save_intermediate_files=args.delete_intermediate_files)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+    
 

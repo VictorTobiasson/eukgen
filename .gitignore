@@ -20,3 +20,6 @@ tmp/*
 */*/*.swarm
 .DS_Store
 *.log
+microcosm/*.csv
+microcosm/*.tsv
+microcosm/*log*
