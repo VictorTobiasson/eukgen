@@ -155,7 +155,7 @@ def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_i
 
     return base_fasta
 
-# main analysis function for tree annotation
+
 # main analysis function for tree annotation
 # assigns taxonomy to leaves, identifies and trims outliers, assigns LCA nodes and performs distance calculations
 # outputs a treeDF with tabulated data for each eukaryotic clade and its corresponding prokaryotic sister-clades
@@ -223,18 +223,17 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     lca_dict = {}
     for taxa in sorted(taxa_list):
         lca_dict[taxa] = get_multiple_soft_LCA_by_relative_purity(tree, taxa,
-                                                                        n_best=9999,
-                                                                        min_size=prok_clade_size,
-                                                                        min_purity=prok_clade_purity,
-                                                                        max_depth=10)
+                                                                  n_best=9999,
+                                                                  min_size=prok_clade_size,
+                                                                  min_purity=prok_clade_purity,
+                                                                  max_depth=10)
 
     # find all euk sof LCAs meeting criteria
     lca_dict['Eukaryota'] = get_multiple_soft_LCA_by_relative_purity(tree, 'Eukaryota',
-                                                             n_best=9999,
-                                                             min_size=euk_clade_size,
-                                                             min_purity=euk_clade_purity,
-                                                             max_depth=10)
-
+                                                                     n_best=9999,
+                                                                     min_size=euk_clade_size,
+                                                                     min_purity=euk_clade_purity,
+                                                                     max_depth=10)
 
     # display LCA results
     accepted_taxa = [taxa for taxa, node in lca_dict.items() if node != [] and taxa != 'Eukaryota']
@@ -244,23 +243,27 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
         print(f'Found acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for: ')
         for taxa in accepted_taxa:
             node_data = lca_dict[taxa]
-            for node in sorted(node_data, key=lambda x:-x[1]):
+            for node in sorted(node_data, key=lambda x: -x[1]):
                 print(f'    {taxa + ":":<25} size: {node[1]}\t weight: {round(node[3], 2)}')
+                pass
 
         print(f'\nNo acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for:')
         print(*sorted(rejected_taxa), sep='\n')
 
     else:
         print(f'WARNING! Found no acceptable LCAs for Prokayotes, will exit.')
+        pass
 
     print(f'\nFound {len(lca_dict["Eukaryota"])} LCA nodes for Eukaryota')
     for node_data in lca_dict['Eukaryota']:
         print(f'    {"Eukarya:":<25} size: {node_data[1]}\t weight: {round(node_data[3], 2)}')
+        pass
     print()
 
     # if more than three good euk nodes are identified warn and restruct analysis
     if len(lca_dict['Eukaryota']) > 3:
-        print(f'WARNING! High paraphyly in Eukaryota, considering the three largest clades of {len(lca_dict["Eukaryota"])} total!')
+        print(
+            f'WARNING! High paraphyly in Eukaryota, considering the three largest clades of {len(lca_dict["Eukaryota"])} total!')
         lca_dict['Eukaryota'] = lca_dict['Eukaryota'][:3]
 
     # revert to original eukaryotic classes on tree
@@ -284,6 +287,9 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
         euk_node_size = euk_node_data[1]
         euk_clade_is_leaf = euk_node.is_leaf()
         euk_node_acc = euk_node.get_closest_leaf()[0].name
+
+        # get the LCA for the identified EUK node as well as the unique class members
+        euk_node_LCA, euk_node_scope, euk_node_scope_len = retrieve_LCA_scope(euk_node.get_leaf_names(), leafDF)
 
         # for all the best prok nodes per taxa
         for j, prok_node_data in enumerate(prok_LCA_nodes):
@@ -316,12 +322,15 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
             # save data as temp_index: treename_"clade_number", clade_name, clade_size, prok_clade_name, prok_taxa...
             # final value of False is for later filtering purposes
             euk_dist_dict[str(i) + '_' + str(j)] = [tree_name, euk_node_acc, euk_node_data[1], euk_node_data[3],
-                                                    euk_clade_is_leaf, prok_node_acc, prok_node_data[1], prok_node_data[3],
-                                                    prok_node_is_clade, prok_node.lca_taxa, dist, top_dist, raw_stem_length, median_euk_branch_length, stem_length,
+                                                    euk_clade_is_leaf, euk_node_LCA, euk_node_scope, euk_node_scope_len,
+                                                    prok_node_acc, prok_node_data[1], prok_node_data[3],
+                                                    prok_node_is_clade, prok_node.lca_taxa, dist, top_dist,
+                                                    raw_stem_length, median_euk_branch_length, stem_length,
                                                     euk_node, prok_node, False]
 
     tree_data = pd.DataFrame.from_dict(euk_dist_dict, orient='index',
-                                       columns=['tree_name', 'euk_clade_rep', 'euk_clade_size', 'euk_clade_weight','euk_leaf_clade', 
+                                       columns=['tree_name', 'euk_clade_rep', 'euk_clade_size', 'euk_clade_weight',
+                                                'euk_leaf_clade', 'euk_LCA', 'euk_scope', 'euk_scope_len',
                                                 'prok_clade_rep', 'prok_clade_size', 'prok_clade_weight',
                                                 'prok_leaf_clade', 'prok_taxa', 'dist', 'top_dist',
                                                 'raw_stem_length', 'median_euk_leaf_dist', 'stem_length',
@@ -344,17 +353,19 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
             if any(node in all_LCA_nodes for node in test_node.get_ancestors()):
                 test_node_acc = test_node.get_closest_leaf()[0].name
-                print(f'EXCLUDING LCA node {test_node_acc} for {test_node.lca_taxa}')
+                # print(f'EXCLUDING LCA node {test_node_acc} for {test_node.lca_taxa}')
                 nested_nodes.append(test_node)
 
         # exclude nested LCAs
-        tree_data['decendant'] = [any(node in nested_nodes for node in data) for data in tree_data[['euk_node_ref', 'prok_node_ref']].values]
+        tree_data['decendant'] = [any(node in nested_nodes for node in data) for data in
+                                  tree_data[['euk_node_ref', 'prok_node_ref']].values]
         tree_data = tree_data[~(tree_data.decendant)]
 
         print()
 
     # loop through data including only n closest prok LCAs per euk LCAs
-    print(f'Consider only closest clades for downstream analysis, clade limit per Eukaryote clade is {consider_closest_n_prok_LCAs}')
+    print(
+        f'Consider only closest clades for downstream analysis, clade limit per Eukaryote clade is {consider_closest_n_prok_LCAs}')
 
     for euk_clade_rep, data in tree_data.groupby('euk_clade_rep'):
         print(f'Including the following LCA list for Eukaryotic LCA: {euk_clade_rep}')
@@ -362,7 +373,8 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
         # consider first n prok LCAs by slicing sorted list
         for i, prok_data in data.iloc[:consider_closest_n_prok_LCAs].iterrows():
-            print(f'   {prok_data.prok_taxa + ":":<30} {prok_data.prok_clade_rep:<25} top_dist: {prok_data.top_dist:<8}')
+            print(
+                f'   {prok_data.prok_taxa + ":":<30} {prok_data.prok_clade_rep:<25} top_dist: {prok_data.top_dist:<8}')
             prok_data.prok_node_ref.add_feature('LCA', prok_data.prok_taxa)
 
             # add a reference to keep all prok LCAs, quite inefficient
@@ -371,7 +383,7 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
         print()
 
-    #delete superflous LCA data and node references
+    # delete superflous LCA data and node references
     tree_data = tree_data[tree_data.include]
     tree_data.drop(['euk_node_ref', 'prok_node_ref', 'include', 'decendant'], axis=1, inplace=True)
 
@@ -379,6 +391,114 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
     return tree, tree_data
 
+
+# get LCA ancestor for post tree partitioned EUK clade
+def retrieve_LCA_scope(LCA_leaf_names, leafDF):
+    # hard coded data from ete3 for faster retrevial
+    # modified to more finely sample eukarya, additions of "Diaphoretickes" and "Amphorea", "TSAR", "Excavata" etc.
+    # for clades with orphans like "opistokonta" which are superclades of other clades like "metazoa" I duble the last entry to avoid popping from an empty list
+    class_lineages = {'Cyanobacteriota': ['root', 'cellular organisms', 'Bacteria', 'Terrabacteria group', 'Cyanobacteriota/Melainabacteria group', 'Cyanobacteriota'],
+                      'Gammaproteobacteria': ['root', 'cellular organisms', 'Bacteria', 'Pseudomonadota', 'Gammaproteobacteria'],
+                      'Bacillota': ['root', 'cellular organisms', 'Bacteria', 'Terrabacteria group', 'Bacillota'],
+                      'Rhodophyta': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Archaeplastida','Rhodophyta'],
+                      'Dinophyceae': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar','Alveolata', 'Dinophyceae'],
+                      'Cryptophyceae': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes','Cryptista' 'Cryptophyceae'],
+                      'Euglenida': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Excavata', 'Discoba','Euglenozoa', 'Euglenida'],
+                      'Chlorophyta': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Archaeplastida','Viridiplantae', 'Chlorophyta'],
+                      'Oomycota': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar','Stramenopiles', 'Oomycota'],
+                      'Ascomycota': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Fungi', 'Dikarya', 'Ascomycota'],
+                      'Basidiomycota': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Fungi', 'Dikarya', 'Basidiomycota'],
+                      'Heterolobosea': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Excavata', 'Discoba', 'Heterolobosea'],
+                      'Apicomplexa': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar', 'Alveolata', 'Apicomplexa'],
+                      'Ciliophora': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar','Alveolata', 'Ciliophora'],
+                      'Microsporidia': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Fungi', 'Fungi incertae sedis', 'Microsporidia'],
+                      'Choanoflagellata': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta', 'Choanoflagellata'],
+                      'Alphaproteobacteria': ['root', 'cellular organisms', 'Bacteria', 'Pseudomonadota','Alphaproteobacteria'],
+                      'Betaproteobacteria': ['root', 'cellular organisms', 'Bacteria', 'Pseudomonadota', 'Betaproteobacteria'],
+                      'Deltaproteobacteria': ['root', 'cellular organisms', 'Bacteria', 'delta/epsilon subdivisions', 'Deltaproteobacteria'],
+                      'Euryarchaeota': ['root', 'cellular organisms', 'Archaea', 'Euryarchaeota'],
+                      'Asgard': ['root', 'cellular organisms', 'Archaea', 'Asgard'],
+                      'Campylobacterota': ['root', 'cellular organisms', 'Bacteria', 'Campylobacterota'],
+                      'Opisthokonta': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Opisthokonta'],
+                      'Metazoa': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Metazoa'],
+                      'Streptophyta': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Archaeplastida','Viridiplantae', 'Streptophyta'],
+                      'Glaucocystophyceae': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes','Archaeplastida', 'Glaucocystophyceae'],
+                      'Acidobacteriota': ['root', 'cellular organisms', 'Bacteria', 'Acidobacteriota'],
+                      'Ancyromonadidae': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Ancyromonadida', 'Ancyromonadidae'],
+                      'Fungi incertae sedis': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa','Opisthokonta', 'Fungi', 'Fungi incertae sedis', 'Fungi incertae sedis'],
+                      'Ichthyosporea': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Ichthyosporea'],
+                      'Malawimonadidae': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Excavata','Malawimonadida', 'Malawimonadidae'],
+                      'Thermoplasmata': ['root', 'cellular organisms', 'Archaea', 'Candidatus Thermoplasmatota','Thermoplasmata'],
+                      'Thermotogae': ['root', 'cellular organisms', 'Bacteria', 'Thermotogota', 'Thermotogae'],
+                      'Chloroflexota': ['root', 'cellular organisms', 'Bacteria', 'Terrabacteria group','Chloroflexota'],
+                      'Thermodesulfobacteriota': ['root', 'cellular organisms', 'Bacteria', 'Thermodesulfobacteriota'],
+                      'Actinomycetota': ['root', 'cellular organisms', 'Bacteria', 'Terrabacteria group','Actinomycetota'],
+                      'Chlamydiia': ['root', 'cellular organisms', 'Bacteria', 'PVC group', 'Chlamydiota','Chlamydiia'],
+                      'Rhizaria': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar', 'Rhizaria'],
+                      'Mycoplasmatota': ['root', 'cellular organisms', 'Bacteria', 'Terrabacteria group','Mycoplasmatota'],
+                      'Apusozoa': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Apusozoa'],
+                      'Amoebozoa': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Amoebozoa'],
+                      'Jakobida': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Excavata', 'Discoba', 'Jakobida'],
+                      'Telonemida': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Telonemida'],
+                      'Colpodellida': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar','Alveolata', 'Colpodellida'],
+                      'Tsukubamonadidae': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Excavata', 'Discoba','Tsukubamonadida', 'Tsukubamonadidae'],
+                      'Breviatea': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Breviatea'],
+                      'Colponemidia': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar', 'Alveolata', 'Colponemida', 'Colponemidia'],
+                      'Aphelidea': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta', 'Aphelida', 'Aphelidea'],
+                      'PVC group': ['root', 'cellular organisms', 'Bacteria', 'PVC group'],
+                      'FCB group': ['root', 'cellular organisms', 'Bacteria', 'FCB group'],
+                      'TACK group': ['root', 'cellular organisms', 'Archaea', 'TACK group'],
+                      'DPANN group': ['root', 'cellular organisms', 'Archaea', 'DPANN group'],
+                      'Fonticulaceae': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta','Rotosphaerida', 'Fonticulaceae'],
+                      'Hemimastigophora': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Hemimastigophora'],
+                      'Perkinsozoa': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar','Alveolata', 'Perkinsozoa'],
+                      'Rhodelphea': ['root', 'cellular organisms', 'Eukaryota', 'Rhodelphea'],
+                      'Haptista': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Haptista'],
+                      'CRuMs': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'CRuMs'],
+                      'Metamonada': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Excavata', 'Metamonada'],
+                      'Eukaryota incertae sedis': ['root', 'cellular organisms', 'Eukaryota','Eukaryota incertae sedis'],
+                      'Bigyra': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar', 'Stramenopiles', 'Bigyra'],
+                      'Filasterea': ['root', 'cellular organisms', 'Eukaryota', 'Amorphea', 'Obazoa', 'Opisthokonta', 'Filasterea'],
+                      'Ochrophyta': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar', 'Stramenopiles', 'Ochrophyta'],
+                      'Sar': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'TSar', 'Sar', 'Sar'],
+                      'Prasinodermophyceae': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes','Archaeplastida', 'Viridiplantae', 'Prasinodermophyta', 'Prasinodermophyceae'],
+                      'Myxococcota': ['root', 'cellular organisms', 'Bacteria', 'Myxococcota'],
+                      'Nebulidea': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Provora', 'Nebulidia','Nebulidea'],
+                      'Bdellovibrionota': ['root', 'cellular organisms', 'Bacteria', 'Bdellovibrionota'],
+                      'DELETE': ['DELETE']}
+
+    print(LCA_leaf_names)
+
+    leaf_clades = leafDF[leafDF.index.isin(LCA_leaf_names) & (leafDF['class'] != 'DELETE')]['class'].unique()
+    print(leaf_clades)
+
+    # if no class names returned something is wrong
+    if len(leaf_clades) < 1:
+        return 'ERROR', 'ERROR', 0
+
+    # if the group is monophyletic return early as LCA and scope is itself
+    if len(leaf_clades) == 1:
+        LCA_clade = leaf_clades[0]
+
+        return LCA_clade, LCA_clade, 1
+
+    lineages = [class_lineages[clade].copy() for clade in leaf_clades]
+
+    print(lineages)
+
+    # pop first element of all lists until set of the elements is not single
+    LCA_clade = ''
+    while True:
+        top_clade = {lin.pop(0) for lin in lineages}
+        if len(top_clade) == 1:
+            LCA_clade = top_clade.pop()
+
+        else:
+            break
+
+    print(LCA_clade)
+
+    return LCA_clade, '|'.join(leaf_clades), len(leaf_clades)
 
 
 # generate a set of constraint trees for each euk_LCA * prok_LCA pair for IQtree2 -g constraint testing
@@ -573,6 +693,11 @@ def run_constraint_analysis(constraint_job_data, evo_model, threads):
 # applies clade markings and styles to tree from tree_analysis:
 def color_tree(tree, savefile=None, view_in_notebook=False):
     from ete3 import TreeStyle, NodeStyle, TextFace
+
+    # fixes some rendering crasher as per
+    # https://github.com/etetoolkit/ete/issues/296
+    import os
+    os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
     # AVOID OVERWRITING OLD TREE
     annot_tree = tree.copy()

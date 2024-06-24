@@ -4,9 +4,8 @@ import time
 
 import numpy as np
 
-
-# helper functions involved in IO
-# small parsing tasks, general functions or repeated calculations
+#helper functions involved in IO
+#small parsing tasks, general functions or repeated calculations
 
 # SEQUENCE ALIGNMENTS OPERATIONS
 
@@ -40,16 +39,12 @@ def fasta_to_dict(fastastring=None, file=None):
         for char in set(seq):
             if char in blacklist:
                 seq = seq.replace(char, 'A')
-                # print(f'WARNING: {key} Replaced illegal {char} with A')
+
+                #print(f'WARNING: {key} Replaced illegal {char} with A')
 
         fastas[key] = seq
     return fastas
 
-
-len({1:1}.keys())
-
-
-# +
 # returns simple single line fasta from {id:seq} dict
 def dict_to_fasta(seq_dict, write_file=False, verbose=True):
     fasta_str = '\n'.join(f'>{key}\n{value}' for key, value in seq_dict.items())
@@ -87,8 +82,6 @@ def dict_to_fastas(seq_dict, outfile_basepath, num_fastas):
         chunk_no += 1
         dict_to_fasta(item, write_file=outfile_path, verbose=True)
 
-
-# -
 
 # small helper for pkl parsing
 def load_pkl(pkl_file):

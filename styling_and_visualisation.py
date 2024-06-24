@@ -39,8 +39,8 @@ colorlib = {'orange': ['#fff2e6ff',  '#ffe0caff',  '#ffcea9ff',  '#fac093ff',  '
         'light_gray': light_gray, 
         'med_gray': med_gray, 
         'dark_gray': dark_gray, 
-        'twilight_shifted_r_perm':['#983550', '#cca389', '#c4ced4', '#6276ba', '#b25652', '#d8c7be', '#95b5c7', '#5e51ad', '#c27c63', '#e2d9e2', '#7297c1']}
-
+        'twilight_shifted_r_perm':['#983550', '#cca389', '#c4ced4', '#6276ba', '#b25652', '#d8c7be', '#95b5c7', '#5e51ad', '#c27c63', '#e2d9e2', '#7297c1'],
+	'categorical':['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f']}
 def default_theme(colorlib=colorlib):
     header_font = 'Nunito'
     body_font = 'NanumGothic'

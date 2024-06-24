@@ -68,6 +68,9 @@ exe_iqtree = 'iqtree2'
 exe_mmseqs = 'mmseqs'
 exe_hhsearch_omp = 'hhsearch_omp'
 exe_hhblits_omp = 'hhblits_omp'
+exe_foldseek = 'foldseek'
+exe_icarus = 'python -u /home/tobiassonva/data/software/ICARUS/icarus.py'
+exe_icarus_environment = 'icarus'
 
 # mmseqs cascaded clustering parameters
 mmseqs_cascade_opts = {'cascade_steps': 4,
@@ -80,7 +83,6 @@ mmseqs_cascade_opts = {'cascade_steps': 4,
                        'cascade_clust': ''
                        }
 
-# +
 exe_realignment = path_root + 'muscle_crop_and_align.py'
 muscle_realignment_timeout = 4000
 realignment_swarm_opts = {'threads-per-process': 8,
@@ -163,3 +165,11 @@ microcosm_format_opts = {
                          'muscle_timeout': 7200,
                          'evo_model_params': '-m MFP -mset LG,Q.pfam --cmin 4 --cmax 12'
                          }
+
+exe_icarus_alignment = path_root + 'icarus_pairwise_align.py'
+icarus_swarm_opts = {'threads-per-process': 16,
+                     'gb-per-process': '75',
+                     'time': '24:00:00',
+                     'logdir': path_log_swarm,
+                     'job-name': 'icarus_alignment',
+                     'maxrunning': 1000}
