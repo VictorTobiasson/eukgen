@@ -27,101 +27,105 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
     print(f'Reading taxonomy mapping from {microcosm_format_opts["taxonomy_mapping"]}')
 
 
-    #TEMPORARY TESTING TAXONOMY
-    microcosm_format_opts['taxonomy_mapping'] = '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_revised.tax'
-    taxonomy_mapping = pd.read_csv(microcosm_format_opts['taxonomy_mapping'], sep='\t',
-                                   names=['acc', 'orgid', 'superkingdom', 'class'], index_col=0)
+#     #TEMPORARY TESTING TAXONOMY
+#     microcosm_format_opts['taxonomy_mapping'] = '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_revised.tax'
+#     taxonomy_mapping = pd.read_csv(microcosm_format_opts['taxonomy_mapping'], sep='\t',
+#                                    names=['acc', 'orgid', 'superkingdom', 'class'], index_col=0)
 
-    #preapare fasta files from accession lists
-    query_fasta, target_fasta = microcosm.prepare_mmseqs(file_root,
-                                                         file_basename,
-                                                         original_query_DB=microcosm_format_opts['original_query_DB'],
-                                                         original_target_DB=microcosm_format_opts['original_target_DB'],
-                                                         save_intermediate_files=save_intermediate_files)
+#     #preapare fasta files from accession lists
+#     query_fasta, target_fasta = microcosm.prepare_mmseqs(file_root,
+#                                                          file_basename,
+#                                                          original_query_DB=microcosm_format_opts['original_query_DB'],
+#                                                          original_target_DB=microcosm_format_opts['original_target_DB'],
+#                                                          save_intermediate_files=save_intermediate_files)
 
-    #reduce both query and target to size using FAMSA and Fasttree
+#     #reduce both query and target to size using FAMSA and Fasttree
 
-    # if there are too many query sequences, crop to size
-    with open(query_fasta, 'r') as fastafile:
-        size = fastafile.read().count('>')
+#     # if there are too many query sequences, crop to size
+#     with open(query_fasta, 'r') as fastafile:
+#         size = fastafile.read().count('>')
 
-    if size > max_euk_sequences:
-        print(f"There are more than {max_euk_sequences} sequences in {query_fasta} ({size}), will crop considering taxonomy in {microcosm_format_opts['taxonomy_mapping']}")
+#     if size > max_euk_sequences:
+#         print(f"There are more than {max_euk_sequences} sequences in {query_fasta} ({size}), will crop considering taxonomy in {microcosm_format_opts['taxonomy_mapping']}")
 
-        query_fasta = microcosm.fasta_reduce_size(query_fasta,
-                                                  threads=threads,
-                                                  max_leaf_size=max_euk_sequences,
-                                                  filter_entropy=microcosm_format_opts['filter_entropy'],
-                                                  save_intermediate_files=True,
-                                                  taxDF=taxonomy_mapping)
+#         query_fasta = microcosm.fasta_reduce_size(query_fasta,
+#                                                   threads=threads,
+#                                                   max_leaf_size=max_euk_sequences,
+#                                                   filter_entropy=microcosm_format_opts['filter_entropy'],
+#                                                   save_intermediate_files=True,
+#                                                   taxDF=taxonomy_mapping)
 
-    else:
-        print(f' There are less than {max_euk_sequences} sequences in {query_fasta} ({size}), no cropping needed')
-        print(f' Writing direct .leaf_mapping file for {query_fasta} as no cropping is done.')
+#     else:
+#         print(f' There are less than {max_euk_sequences} sequences in {query_fasta} ({size}), no cropping needed')
+#         print(f' Writing direct .leaf_mapping file for {query_fasta} as no cropping is done.')
 
-        with open(file_root + file_basename + '.query.acc', 'r') as acc_file:
-            accs = [acc.strip() for acc in acc_file.readlines()]
+#         with open(file_root + file_basename + '.query.acc', 'r') as acc_file:
+#             accs = [acc.strip() for acc in acc_file.readlines()]
 
-        crop_dict = {acc:[acc] for acc in accs}
-        leafDF = format_leafDF(crop_dict, taxonomy_mapping)
-        leafDF.to_csv(query_fasta + '.leaf_mapping', header=None, sep='\t')
-
-
-    # if there are too many target sequences, crop to size
-    with open(target_fasta, 'r') as fastafile:
-        size = fastafile.read().count('>')
-
-    if size > max_prok_sequences:
-        print(f'There are more than {max_prok_sequences} sequences in {target_fasta} ({size}), will crop considering taxonomy in {microcosm_format_opts["taxonomy_mapping"]}')
-
-        target_fasta = microcosm.fasta_reduce_size(target_fasta,
-                                                   threads = threads,
-                                                   max_leaf_size=max_prok_sequences,
-                                                   filter_entropy = microcosm_format_opts['filter_entropy'],
-                                                   save_intermediate_files=True,
-                                                   taxDF=taxonomy_mapping)
-
-    else:
-        print(f' There are less than {max_prok_sequences} sequences in {target_fasta} ({size}), no cropping needed')
-        print(f' Writing direct .leaf_mapping file for {target_fasta} as no cropping is done.')
-
-        with open(file_root + file_basename + '.target.acc', 'r') as acc_file:
-            accs = [acc.strip() for acc in acc_file.readlines()]
-
-        crop_dict = {acc:[acc] for acc in accs}
-        leafDF = format_leafDF(crop_dict, taxonomy_mapping)
-        leafDF.to_csv(target_fasta + '.leaf_mapping', header=None, sep='\t')
+#         crop_dict = {acc:[acc] for acc in accs}
+#         leafDF = format_leafDF(crop_dict, taxonomy_mapping)
+#         leafDF.to_csv(query_fasta + '.leaf_mapping', header=None, sep='\t')
 
 
-    # merge fasta files and leaf mapping and realign
-    merged_fasta = file_root + file_basename + '.merged.fasta'
-    subprocess.run(f'cat {query_fasta} {target_fasta} > {merged_fasta}', shell=True)
-    subprocess.run(f'cat {query_fasta + ".leaf_mapping"} {target_fasta + ".leaf_mapping"} > {merged_fasta + ".leaf_mapping"}', shell=True)
+#     # if there are too many target sequences, crop to size
+#     with open(target_fasta, 'r') as fastafile:
+#         size = fastafile.read().count('>')
 
-    print(f'Merged prok and euk files and aligning using muscle')
-    muscle_fasta = muscle_ensamble(merged_fasta,
-                    threads = threads,
-                    muscle_reps = microcosm_format_opts['muscle_reps'],
-                    super5=False,
-                    save_intermediate_files=save_intermediate_files,
-                    timeout=microcosm_format_opts['muscle_timeout'])
+#     if size > max_prok_sequences:
+#         print(f'There are more than {max_prok_sequences} sequences in {target_fasta} ({size}), will crop considering taxonomy in {microcosm_format_opts["taxonomy_mapping"]}')
 
-    # filter by entropy
-    aln = fasta_to_dict(file=muscle_fasta)
-    aln_filter = filter_by_entropy(seq_dict = aln,
-                                   entropy_min = microcosm_format_opts['filter_entropy'])
-                                   # seq_length_frac_min = microcosm_format_opts['filter_length_frac'])
+#         target_fasta = microcosm.fasta_reduce_size(target_fasta,
+#                                                    threads = threads,
+#                                                    max_leaf_size=max_prok_sequences,
+#                                                    filter_entropy = microcosm_format_opts['filter_entropy'],
+#                                                    save_intermediate_files=True,
+#                                                    taxDF=taxonomy_mapping)
 
-    if save_intermediate_files:
-        subprocess.run(f'cp {muscle_fasta} {muscle_fasta}.uncropped'.split())
+#     else:
+#         print(f' There are less than {max_prok_sequences} sequences in {target_fasta} ({size}), no cropping needed')
+#         print(f' Writing direct .leaf_mapping file for {target_fasta} as no cropping is done.')
 
-    dict_to_fasta(aln_filter, write_file=muscle_fasta)
+#         with open(file_root + file_basename + '.target.acc', 'r') as acc_file:
+#             accs = [acc.strip() for acc in acc_file.readlines()]
 
-    #create IQTree from alignment
-    treefile = calculate_IQtree(muscle_fasta,
-                                evo_model_params = microcosm_format_opts['evo_model_params'],
-                                threads = threads,
-                                save_intermediate_files=save_intermediate_files)
+#         crop_dict = {acc:[acc] for acc in accs}
+#         leafDF = format_leafDF(crop_dict, taxonomy_mapping)
+#         leafDF.to_csv(target_fasta + '.leaf_mapping', header=None, sep='\t')
+
+
+#     # merge fasta files and leaf mapping and realign
+#     merged_fasta = file_root + file_basename + '.merged.fasta'
+#     subprocess.run(f'cat {query_fasta} {target_fasta} > {merged_fasta}', shell=True)
+#     subprocess.run(f'cat {query_fasta + ".leaf_mapping"} {target_fasta + ".leaf_mapping"} > {merged_fasta + ".leaf_mapping"}', shell=True)
+
+#     print(f'Merged prok and euk files and aligning using muscle')
+#     muscle_fasta = muscle_ensamble(merged_fasta,
+#                     threads = threads,
+#                     muscle_reps = microcosm_format_opts['muscle_reps'],
+#                     super5=False,
+#                     save_intermediate_files=save_intermediate_files,
+#                     timeout=microcosm_format_opts['muscle_timeout'])
+
+#     # filter by entropy
+#     aln = fasta_to_dict(file=muscle_fasta)
+#     aln_filter = filter_by_entropy(seq_dict = aln,
+#                                    entropy_min = microcosm_format_opts['filter_entropy'])
+#                                    # seq_length_frac_min = microcosm_format_opts['filter_length_frac'])
+
+#     if save_intermediate_files:
+#         subprocess.run(f'cp {muscle_fasta} {muscle_fasta}.uncropped'.split())
+
+#     dict_to_fasta(aln_filter, write_file=muscle_fasta)
+
+#     #create IQTree from alignment
+#     treefile = calculate_IQtree(muscle_fasta,
+#                                 evo_model_params = microcosm_format_opts['evo_model_params'],
+#                                 threads = threads,
+#                                 save_intermediate_files=save_intermediate_files)
+
+    # start from post iqtree
+    treefile = f'{file_root}{file_basename}.merged.fasta.muscle.treefile'
+    merged_fasta = f'{file_root}{file_basename}.merged.fasta'
 
     # process final tree, find outliers, find LCAs for all taxa and calculate distances
     annot_tree, tree_data = microcosm.tree_analysis(treefile,
@@ -139,7 +143,7 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
 
     # break in cases of poor EUK annotation
     if tree_data.shape[0] == 0:
-        print(f'No eukaryotic LCAs were detected in {file_basename} exiting')
+        print(f'No tree data was detected in {file_basename} exiting')
         return
 
     # skip constraint analysis if only one prok taxa found
@@ -188,14 +192,6 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
         subprocess.run(f'rm {file_root}/*.fasttree {file_root}/*muscle.log {file_root}/*.famsa* {file_root}/*.uncropped', shell=True)
         subprocess.run(f'rm {file_root}/*.contree {file_root}/*.bionj {file_root}/*.gz {file_root}/*.mldist {file_root}/*.nex {file_root}/*.ufboot', shell=True)
 
-        # post hoc clean files
-#     if save_intermediate_files == True:
-#         subprocess.run(f'rm {file_root}/*.query.fasta {file_root}/*.target.fasta'.split(), shell=True)
-#         subprocess.run(f'rm {file_root}/*.muscle-efa {file_root}/*.muscle.log'.split(), shell=True)
-
-#         subprocess.run(f'rm {file_root}/*.fasttree {file_root}/*muscle.log {file_root}/*.famsa* {file_root}/*.uncropped', shell=True)
-#         subprocess.run(f'rm {file_root}/*.contree {file_root}/*.bionj {file_root}/*.gz {file_root}/*.mldist {file_root}/*.nex {file_root}/*.ufboot', shell=True)
-
 
 #argparse define
 parser = argparse.ArgumentParser(description='Evaluate microcosm')
@@ -213,6 +209,17 @@ if __name__ == '__main__':
                   args.file_basename,
                   args.threads,
                   save_intermediate_files=args.delete_intermediate_files)
-    
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -164,12 +164,12 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
                   outlier_CDF_high=0.99,
                   tree_crop_cutoff=0.30,
                   delete_outliers=True,
-                  prok_clade_size=2,
+                  prok_clade_size=3,
                   prok_clade_purity=0.80,
                   euk_clade_size=5,
                   euk_clade_purity=0.8,
                   exclude_nested_LCAs=True,
-                  consider_closest_n_prok_LCAs=10):
+                  consider_closest_n_prok_LCAs=7):
 
     import pandas as pd
     from ete3 import Tree
@@ -240,14 +240,18 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     accepted_taxa = [taxa for taxa, node in lca_dict.items() if node != [] and taxa != 'Eukaryota']
     rejected_taxa = [taxa for taxa, node in lca_dict.items() if node == [] and taxa != 'Eukaryota']
 
-    print(f'Found acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for: ')
-    for taxa in accepted_taxa:
-        node_data = lca_dict[taxa]
-        for node in sorted(node_data, key=lambda x:-x[1]):
-            print(f'    {taxa + ":":<25} size: {node[1]}\t weight: {round(node[3], 2)}')
+    if accepted_taxa:
+        print(f'Found acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for: ')
+        for taxa in accepted_taxa:
+            node_data = lca_dict[taxa]
+            for node in sorted(node_data, key=lambda x:-x[1]):
+                print(f'    {taxa + ":":<25} size: {node[1]}\t weight: {round(node[3], 2)}')
 
-    print(f'\nNo acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for:')
-    print(*sorted(rejected_taxa), sep='\n')
+        print(f'\nNo acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for:')
+        print(*sorted(rejected_taxa), sep='\n')
+
+    else:
+        print(f'WARNING! Found no acceptable LCAs for Prokayotes, will exit.')
 
     print(f'\nFound {len(lca_dict["Eukaryota"])} LCA nodes for Eukaryota')
     for node_data in lca_dict['Eukaryota']:
@@ -565,7 +569,6 @@ def run_constraint_analysis(constraint_job_data, evo_model, threads):
     all_test_data.drop('constraint_tree_id', axis=1, inplace=True)
 
     return all_test_data
-
 
 # applies clade markings and styles to tree from tree_analysis:
 def color_tree(tree, savefile=None, view_in_notebook=False):

@@ -160,6 +160,6 @@ microcosm_format_opts = {
                          'filter_length_frac': 0.2,
                          'threads': 8,
                          'muscle_reps': 3,
-                         'muscle_timeout': 3600,
+                         'muscle_timeout': 7200,
                          'evo_model_params': '-m MFP -mset LG,Q.pfam --cmin 4 --cmax 12'
                          }
