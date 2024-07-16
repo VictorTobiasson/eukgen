@@ -28,10 +28,21 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
     print(f'Reading taxonomy mapping from {microcosm_format_opts["taxonomy_mapping"]}')
 
 
-    #TEMPORARY TESTING TAXONOMY
-    microcosm_format_opts['taxonomy_mapping'] = '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_revised.tax'
+    #scrub DELETE entries from microcosms
     taxonomy_mapping = pd.read_csv(microcosm_format_opts['taxonomy_mapping'], sep='\t',
                                    names=['acc', 'orgid', 'superkingdom', 'class'], index_col=0)
+
+    # query accs
+    accs = pd.read_csv(file_root + file_basename + '.query.acc', header=None, names=['acc'], index_col=0)
+    filter_accs = taxonomy_mapping.loc[accs.index] != 'DELETE'
+    index_to_keep = filter_accs[filter_accs['class']].index
+    pd.Series(index_to_keep).to_csv(file_root + file_basename + '.query.acc', index=None, header=None)
+
+    # target accs
+    accs = pd.read_csv(file_root + file_basename + '.target.acc', header=None, names=['acc'], index_col=0)
+    filter_accs = taxonomy_mapping.loc[accs.index] != 'DELETE'
+    index_to_keep = filter_accs[filter_accs['class']].index
+    pd.Series(index_to_keep).to_csv(file_root + file_basename + '.target.acc', index=None, header=None)
 
     #preapare fasta files from accession lists
     query_fasta, target_fasta = microcosm.prepare_mmseqs(file_root,

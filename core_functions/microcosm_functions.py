@@ -169,7 +169,8 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
                   euk_clade_size=5,
                   euk_clade_purity=0.8,
                   exclude_nested_LCAs=True,
-                  consider_closest_n_prok_LCAs=7):
+                  consider_closest_n_prok_LCAs=12):
+
     import pandas as pd
     from ete3 import Tree
     from core_functions.tree_functions import get_outlier_nodes_by_lognorm, map_leafDF, \

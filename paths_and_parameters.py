@@ -48,7 +48,7 @@ path_taxonomy = path_core_data + 'taxonomy/'
 ncbi_taxonomy = path_taxonomy + 'ncbi_tax_231127/'
 
 # merged tax files from prok2111_as and euk72_ep with columns ['acc', 'orgid', 'superkingdom', 'class']
-merged_protein_tree_taxonomy = path_taxonomy + 'euk_prok_merged_protein.tax'
+merged_protein_tree_taxonomy = path_taxonomy + 'euk_prok_merged_protein_revised.tax'
 
 # protein tax mapping and species lienage mapping from NCBI
 euk72_protein_taxonomy = path_taxonomy + 'euk72_protein_taxonomy.pkl'
@@ -127,7 +127,7 @@ microcosm_format_opts = {'original_query_DB': euk72_ep,
                          'original_target_DB': prok2111_as,
                          'taxonomy_mapping': merged_protein_tree_taxonomy,
                          'max_euk_sequences': 30,
-                         'max_prok_sequences': 70,
+                         'max_prok_sequences': 30,
                          'filter_entropy': 0.15,
                          'filter_length_frac': 0.2,
                          'threads': 8,
