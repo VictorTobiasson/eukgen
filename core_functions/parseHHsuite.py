@@ -4,9 +4,7 @@
 # standalone python only module to reformat hhblits and hhsearch ffdata into a python data structure
 # requires pickle and/or pandas for output
 
-
-
-# main class fora aggregates queries
+# main class for aggregates queries
 class HHblitsData:
     def __init__(self):
         self.data = {}
@@ -31,6 +29,7 @@ class HHblitsData:
             self.add_entries(pickle.load(infile).data)
 
     def write_data_tsv(self, filename):
+        import os
         # write the header info
         header = 'Query\t' + '\t'.join([key for key in self.data[self.query_names[0]].hit_dict.keys()]) + '\n'
 
@@ -40,6 +39,10 @@ class HHblitsData:
 
             for key, item in self.data.items():
                 outfile.write(item.format_data_tsv() + '\n')
+        cut_filename = filename.replace(".tsv", ".cut.tsv")
+        os.system(f"cut -f1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 {filename} > {cut_filename}")
+        os.system(f"rm {filename}")
+                
 
     def write_query_tsv(self, filename):
         # write header info

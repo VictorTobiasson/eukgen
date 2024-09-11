@@ -1,5 +1,6 @@
 import subprocess
-
+import glob
+import os
 
 # extra opts is dictionary with "nonredundant_cluster": parameters
 def collapse_nonredundant(root, seqDB, threads, extra_opts=None):
@@ -185,29 +186,36 @@ def extract_query_fasta(root, seqDB, clusterDB, skip_singletons=True):
     # createseqdb to get cluster members as \x00 delimited fasta
     mkdir = f'mkdir {fasta_root}'
     mmseqs_subdb = f'{exe_mmseqs} createseqfiledb {seqDB} {clusterDB} {fastaDB}'
-    subprocess.run(mkdir.split())
-    subprocess.run(mmseqs_subdb.split())
+    print(mmseqs_subdb)
+    # subprocess.run(mkdir.split())
+    # subprocess.run(mmseqs_subdb.split())
 
     # read the binary mmseqsDB and split at \x00 bytes. Write each part into individual file.
-    with open(fastaDB, 'rb') as binary_fasta:
-        # drop last empty slice
-        cluster_fastas = binary_fasta.read().split(b'\x00')[:-1]
-
-    for fasta in cluster_fastas:
-
-        fastastr = fasta.decode('utf-8', 'ignore')
-        name = fastastr.split('\n')[0].strip('>').split(' ')[0]
-        size = fastastr.count('>')
-
-        if skip_singletons and size > 1:
-            with open(f'{fasta_root}{name}', 'w') as fastafile:
-                fastafile.write(fastastr)
-
-        elif not skip_singletons:
-            with open(f'{fasta_root}{name}', 'w') as fastafile:
-                fastafile.write(fastastr)
-
-        # print(f'Wrote {n} {fasta_root}{name}')
+    if fastaDB in os.listdir(root):
+        fastaDBs = [fastaDB]
+    else:
+        fastaDBs = glob.glob(f"{fastaDB}.[0-9]*")
+    
+    for fastaDB in fastaDBs:
+        with open(fastaDB, 'rb') as binary_fasta:
+            # drop last empty slice
+            cluster_fastas = binary_fasta.read().split(b'\x00')[:-1]
+    
+        for fasta in cluster_fastas:
+    
+            fastastr = fasta.decode('utf-8', 'ignore')
+            name = fastastr.split('\n')[0].strip('>').split(' ')[0]
+            size = fastastr.count('>')
+    
+            if skip_singletons and size > 1:
+                with open(f'{fasta_root}{name}', 'w') as fastafile:
+                    fastafile.write(fastastr)
+    
+            elif not skip_singletons:
+                with open(f'{fasta_root}{name}', 'w') as fastafile:
+                    fastafile.write(fastastr)
+    
+            # print(f'Wrote {n} {fasta_root}{name}')
 
     return fasta_root
 

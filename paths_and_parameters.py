@@ -26,6 +26,10 @@ prok2111 = path_prok2111 + 'prok2111'
 prok2111_filtered = path_prok2111 + 'prok2111_filtered'
 prok2111_header = path_prok2111 + 'prok2111_header_mapping.pkl'
 
+# core mmseqs asgard2023
+path_asgard2023 = path_core_data + 'asgard2023_clean/'
+asgard2023 = path_asgard2023 + 'asgard2023_clean'
+
 # prok2111 with asgards from ettema2023
 path_prok2111_as = path_core_data + 'prok2111_as/'
 prok2111_as = path_prok2111_as + 'prok2111_as'
@@ -120,7 +124,7 @@ cstranslate_opts = '-f -x 0.3 -c 4 -I a3m'
 # hhsuite searches
 exe_hhsuite_search = path_root + 'hhsuite_search.py'
 #note that the alignment need to be present for parsing of full names using parse_HHsuite
-hhblits_search_opts = '-n 3 -p 80 -z 1 -Z 20 -B 20 -b 1'
+hhblits_search_opts = '-n 1 -p 30 -z 1 -Z 100 -B 100 -b 1'
 hhblits_swarm_opts = {'threads-per-process': 24,
                       'gb-per-process': '100',
                       'time': '48:00:00',
@@ -128,11 +132,12 @@ hhblits_swarm_opts = {'threads-per-process': 24,
                       'logdir': '/data/luojaa/log/swarm_out/',
                       'job-name': 'hhsuite_search',
                       'maxrunning': 500,
+                      'module': 'mmseqs,clustalo,muscle,python/3.9,hhsuite,mafft/7.475,IQTREE,FastTree'
                       }
 # hhsuite merging/parsing search results
 exe_hhsuite_parse = path_root + 'hhsuite_parse.py'
 parse_swarm_opts = {'threads-per-process': 8,
-                      'gb-per-process': '25',
+                      'gb-per-process': '80',
                       'time': '8:00:00',
                       'logdir': '/data/luojaa/log/swarm_out/',
                       'job-name': 'hhsuite_parse',
@@ -153,8 +158,10 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
 microcosm_format_opts = {
                          # 'original_query_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
                          # 'original_target_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
-                         'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep/euk72_ep.repseq',
-                         'original_target_DB': '/data/luojaa/eukgen/mmseqs_victor/prok2111_as/prok2111_as.repseq',
+                         # 'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep/euk72_ep.repseq',
+                         # 'original_target_DB': '/data/luojaa/eukgen/mmseqs_victor/prok2111_as/prok2111_as.repseq',
+                         'original_query_DB': '/data/luojaa/eukgen/processing/asgard2023/asgard2023_clean.repseq',
+                         'original_target_DB': '/data/luojaa/eukgen/processing/prok2111/prok2111.repseq',
                          'taxonomy_mapping': merged_protein_tree_taxonomy,
                          'max_euk_sequences': 30,
                          'max_prok_sequences': 70,
@@ -170,6 +177,6 @@ exe_icarus_alignment = path_root + 'icarus_pairwise_align.py'
 icarus_swarm_opts = {'threads-per-process': 16,
                      'gb-per-process': '75',
                      'time': '24:00:00',
-                     'logdir': path_log_swarm,
+                     'logdir': '/data/luojaa/log/swarm_out/',
                      'job-name': 'icarus_alignment',
                      'maxrunning': 1000}

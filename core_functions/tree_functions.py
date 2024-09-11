@@ -698,8 +698,8 @@ def dirty_phyla_add(tree, tax_mapping):
 
             leaf.add_feature('tax_class', entry['class'])
 
-            if leaf.tax_superkingdom == 'Eukaryota':
-                leaf.add_feature('tax_filter', 'Eukaryota')
+            if leaf.tax_superkingdom == 'Archaea':
+                leaf.add_feature('tax_filter', 'Archaea')
             else:
                 leaf.add_feature('tax_filter', entry['class'])
 
@@ -724,7 +724,7 @@ def get_closest_leaf(leaf):
 # all leaves from the ancestor is no loger monophyletic under the given attribute
 # repeat for all remaining leaves
 # if any clade would have the global root as ancestor rerooot and retry to avoid false paraphyly by tree data struture
-def get_paraphyletic_groups(tree, attribute='tax_superkingdom', attr_value='Eukaryota', current_root=False):
+def get_paraphyletic_groups(tree, attribute='tax_superkingdom', attr_value='Archaea', current_root=False):
     # tree.set_outgroup(tree.get_farthest_leaf()[0])
 
     if current_root:
@@ -774,7 +774,7 @@ def get_paraphyletic_groups(tree, attribute='tax_superkingdom', attr_value='Euka
 
 
 # return the entropy of decendant and non decendant leaf labels
-def get_entropy_for_partition(tree, node, attribute='tax_filter', attr_value='Eukaryota'):
+def get_entropy_for_partition(tree, node, attribute='tax_filter', attr_value='Archaea'):
     all_labels = [getattr(leaf, attribute) for leaf in tree.get_leaves()]
     all_label_count = all_labels.count(attr_value)
     tree_width = len(all_labels)
@@ -807,7 +807,7 @@ def get_entropy_for_partition(tree, node, attribute='tax_filter', attr_value='Eu
 
 # assign soft LCA node based on minimizing entropy between given label outside and inside clade
 # more pessimissive than voting ratio, qualitatively underestimates
-def get_soft_LCA_by_relative_entropy(tree, attribute='tax_superkingdom', attr_value='Eukaryota', save_loss=False):
+def get_soft_LCA_by_relative_entropy(tree, attribute='tax_superkingdom', attr_value='Archaea', save_loss=False):
     # count vote ratio for each node for one taxa
     tree_width = len(tree.get_leaves())
     root = tree.get_tree_root()
@@ -880,7 +880,7 @@ def get_soft_LCA_by_relative_entropy(tree, attribute='tax_superkingdom', attr_va
 
 # find soft LCA, mask all members and repeat LCA check until no more members
 # returns list of all soft LCAs
-def get_multiple_soft_LCAs(tree, attribute='tax_filter', attr_value='Eukaryota', min_size=1, min_purity=0,
+def get_multiple_soft_LCAs(tree, attribute='tax_filter', attr_value='Archaea', min_size=1, min_purity=0,
                            max_entropy=9999):
     print(f'Searching for LCA_nodes by checking where {attribute} is {attr_value}')
 

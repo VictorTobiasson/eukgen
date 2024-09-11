@@ -166,7 +166,7 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
                   delete_outliers=True,
                   prok_clade_size=3,
                   prok_clade_purity=0.80,
-                  euk_clade_size=5,
+                  euk_clade_size=1, #to do- change back to 5
                   euk_clade_purity=0.8,
                   exclude_nested_LCAs=True,
                   consider_closest_n_prok_LCAs=12):
@@ -187,7 +187,7 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
     # merge all euk classification in to 'Eukaryota' save old class
     leafDF['class'] = leafDF.full_class
-    leafDF.loc[leafDF[leafDF.superkingdom == 'Eukaryota'].index, 'class'] = 'Eukaryota'
+    leafDF.loc[leafDF[(leafDF.superkingdom == 'Archaea') & (leafDF.full_class == 'Asgard')].index, 'class'] = 'Archaea'
 
     # reroot at midpoint before outlier calculation
     tree = weighted_midpoint_root(tree)
@@ -217,7 +217,7 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     tree = map_leafDF(tree, leafDF)
 
     # find the best bacterial soft LCA for all taxa
-    taxa_list = leafDF[(leafDF.superkingdom.isin(['Bacteria', 'Archaea'])) & (leafDF.leaf != 'DELETED')][
+    taxa_list = leafDF[(leafDF.superkingdom.isin(['Bacteria', 'Archaea'])) & (leafDF.leaf != 'DELETED') & (leafDF.full_class != 'Asgard')][
         'class'].unique()
 
     lca_dict = {}
@@ -229,15 +229,15 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
                                                                   max_depth=10)
 
     # find all euk sof LCAs meeting criteria
-    lca_dict['Eukaryota'] = get_multiple_soft_LCA_by_relative_purity(tree, 'Eukaryota',
+    lca_dict['Archaea'] = get_multiple_soft_LCA_by_relative_purity(tree, 'Archaea',
                                                                      n_best=9999,
                                                                      min_size=euk_clade_size,
                                                                      min_purity=euk_clade_purity,
                                                                      max_depth=10)
 
     # display LCA results
-    accepted_taxa = [taxa for taxa, node in lca_dict.items() if node != [] and taxa != 'Eukaryota']
-    rejected_taxa = [taxa for taxa, node in lca_dict.items() if node == [] and taxa != 'Eukaryota']
+    accepted_taxa = [taxa for taxa, node in lca_dict.items() if node != [] and taxa != 'Archaea']
+    rejected_taxa = [taxa for taxa, node in lca_dict.items() if node == [] and taxa != 'Archaea']
 
     if accepted_taxa:
         print(f'Found acceptable LCAs with size > {prok_clade_size} and purity {prok_clade_purity} for: ')
@@ -254,17 +254,17 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
         print(f'WARNING! Found no acceptable LCAs for Prokayotes, will exit.')
         pass
 
-    print(f'\nFound {len(lca_dict["Eukaryota"])} LCA nodes for Eukaryota')
-    for node_data in lca_dict['Eukaryota']:
-        print(f'    {"Eukarya:":<25} size: {node_data[1]}\t weight: {round(node_data[3], 2)}')
+    print(f'\nFound {len(lca_dict["Archaea"])} LCA nodes for Archaea')
+    for node_data in lca_dict['Archaea']:
+        print(f'    {"Archaea:":<25} size: {node_data[1]}\t weight: {round(node_data[3], 2)}')
         pass
     print()
 
     # if more than three good euk nodes are identified warn and restruct analysis
-    if len(lca_dict['Eukaryota']) > 3:
+    if len(lca_dict['Archaea']) > 3:
         print(
-            f'WARNING! High paraphyly in Eukaryota, considering the three largest clades of {len(lca_dict["Eukaryota"])} total!')
-        lca_dict['Eukaryota'] = lca_dict['Eukaryota'][:3]
+            f'WARNING! High paraphyly in Archaea, considering the three largest clades of {len(lca_dict["Archaea"])} total!')
+        lca_dict['Archaea'] = lca_dict['Archaea'][:3]
 
     # revert to original eukaryotic classes on tree
     leafDF.columns = ['leaf', 'superkingdom', 'class', 'rank', 'filter_class']
@@ -276,8 +276,8 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
     # separate euk and prok LCA nodes
     all_LCA_data = [node for taxa, nodes in lca_dict.items() for node in nodes]
     all_LCA_nodes = [node[0] for node in all_LCA_data]
-    euk_LCA_nodes = [node for node in all_LCA_data if node[0].lca_taxa == 'Eukaryota']
-    prok_LCA_nodes = [node for node in all_LCA_data if node[0].lca_taxa != 'Eukaryota']
+    euk_LCA_nodes = [node for node in all_LCA_data if node[0].lca_taxa == 'Archaea']
+    prok_LCA_nodes = [node for node in all_LCA_data if node[0].lca_taxa != 'Archaea']
 
     # for all eukaryotic nodes
     for i, euk_node_data in enumerate(euk_LCA_nodes):
@@ -365,11 +365,11 @@ def tree_analysis(tree_file, leaf_mapping, tree_name,
 
     # loop through data including only n closest prok LCAs per euk LCAs
     print(
-        f'Consider only closest clades for downstream analysis, clade limit per Eukaryote clade is {consider_closest_n_prok_LCAs}')
+        f'Consider only closest clades for downstream analysis, clade limit per Archaea clade is {consider_closest_n_prok_LCAs}')
 
     for euk_clade_rep, data in tree_data.groupby('euk_clade_rep'):
-        print(f'Including the following LCA list for Eukaryotic LCA: {euk_clade_rep}')
-        data.iloc[0].euk_node_ref.add_feature('LCA', 'Eukaryota')
+        print(f'Including the following LCA list for Archaea LCA: {euk_clade_rep}')
+        data.iloc[0].euk_node_ref.add_feature('LCA', 'Archaea')
 
         # consider first n prok LCAs by slicing sorted list
         for i, prok_data in data.iloc[:consider_closest_n_prok_LCAs].iterrows():
@@ -530,7 +530,7 @@ def format_constraint_analysis(root, basename, tree_data, clade_size=10):
 
     for node in tree.traverse():
         if 'LCA' in node.features:
-            if node.LCA == 'Eukaryota':
+            if node.LCA == 'Archaea':
                 euk_LCA_nodes.append(node)
             else:
                 prok_LCA_nodes.append(node)
@@ -608,7 +608,7 @@ def format_constraint_analysis(root, basename, tree_data, clade_size=10):
 
     constraint_job_data.to_csv(f'{constraint_base}/constraint_trees.tsv', sep='\t', index=None)
 
-    print(f'Formatted {constraint_job_data.shape[0]} guide trees for {len(euk_LCA_nodes)} eukaryotic LCAs')
+    print(f'Formatted {constraint_job_data.shape[0]} guide trees for {len(euk_LCA_nodes)} archaeal LCAs')
 
     return constraint_job_data.set_index('euk_clade_rep')
 
@@ -739,7 +739,7 @@ def color_tree(tree, savefile=None, view_in_notebook=False):
                 node.add_face(TextFace(' ' + str(node.counts), fsize=8), column=3)
 
         if 'LCA' in node.features:
-            if node.LCA == 'Eukaryota':
+            if node.LCA == 'Archaea': # TO DO - switch to archaea
                 node.set_style(LCA_euk_node_style)
                 #node.add_face(TextFace(node.LCA, fsize=8), column = 1)
 

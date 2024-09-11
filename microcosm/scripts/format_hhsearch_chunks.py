@@ -15,21 +15,21 @@ def merge_hhsuite_search_results_chunks(search_root, output_basename, chunks, pa
     print(f"creating {chunks} chunks")
     results_files = os.listdir(search_root)
     results_paths = [search_root + f for f in results_files]
-    numfiles = len(results_paths)
-    chunksize = numfiles // chunks
-    for chunk_no in range(chunks): # CHANGE TO ALL CHUNKS AFTER TESTING
-        start = chunksize * chunk_no
-        if chunk_no == chunks - 1:
-            end = numfiles
-        else:
-            end = chunksize * (chunk_no + 1)
-        chunk_files = results_paths[start:end]
-        chunkdir = f"{search_root}chunk{chunk_no}/"
-        process = subprocess.Popen(["mkdir", chunkdir[:-1]])
-        process.wait()
-        for file in chunk_files:
-            process = subprocess.Popen(["mv", file, chunkdir]) # CHANGE TO MV
-            process.wait()
+    # numfiles = len(results_paths)
+    # chunksize = numfiles // chunks
+    # for chunk_no in range(chunks): # CHANGE TO ALL CHUNKS AFTER TESTING
+    #     start = chunksize * chunk_no
+    #     if chunk_no == chunks - 1:
+    #         end = numfiles
+    #     else:
+    #         end = chunksize * (chunk_no + 1)
+    #     chunk_files = results_paths[start:end]
+    #     chunkdir = f"{search_root}chunk{chunk_no}/"
+    #     process = subprocess.Popen(["mkdir", chunkdir[:-1]])
+    #     process.wait()
+    #     for file in chunk_files:
+    #         process = subprocess.Popen(["mv", file, chunkdir]) # CHANGE TO MV
+    #         process.wait()
     
     #probably better to swarm this
     # format swarm file

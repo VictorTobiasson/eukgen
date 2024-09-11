@@ -160,11 +160,12 @@ def merge_hhsuite_search_results(search_root, output_basename, write_tsv=True, f
         #merge with all_data
         all_data.add_entries(new_data.data)
 
-    all_data.write_pkl(output_basename+'.pkl')
+    #all_data.write_pkl(output_basename+'.pkl')
 
     if write_tsv:
         all_data.write_query_tsv(output_basename+'.query.tsv')
         all_data.write_data_tsv(output_basename+'.tsv')
+        os.system(f"rm -rf {search_root}")
 
     return all_data
 
