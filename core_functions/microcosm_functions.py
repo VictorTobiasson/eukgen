@@ -465,6 +465,9 @@ def retrieve_LCA_scope(LCA_leaf_names, leafDF):
                       'Myxococcota': ['root', 'cellular organisms', 'Bacteria', 'Myxococcota'],
                       'Nebulidea': ['root', 'cellular organisms', 'Eukaryota', 'Diaphoretickes', 'Provora', 'Nebulidia','Nebulidea'],
                       'Bdellovibrionota': ['root', 'cellular organisms', 'Bacteria', 'Bdellovibrionota'],
+                      'Spirochaetota': ['root', 'cellular organisms', 'Bacteria', 'Spirochaetota'],
+                      'Deinococcota': ['root', 'cellular organisms', 'Bacteria', 'Terrabacteria group', 'Deinococcota'],
+                      'Nitrospirota': ['root', 'cellular organisms', 'Bacteria', 'Nitrospirota'],
                       'DELETE': ['DELETE']}
 
     print(LCA_leaf_names)
