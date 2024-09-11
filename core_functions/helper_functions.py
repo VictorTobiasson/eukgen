@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 
-#helper functions involved in IO
+#helper functions involved in IO 
 #small parsing tasks, general functions or repeated calculations
 
 # SEQUENCE ALIGNMENTS OPERATIONS
