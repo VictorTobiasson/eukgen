@@ -23,7 +23,6 @@ tmp/*
 microcosm/*.csv
 microcosm/*.tsv
 microcosm/*log*
-microcosm/*.ipynb
 .virtual_documents/*
 core_data/*
 *.tsv*
