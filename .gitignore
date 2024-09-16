@@ -24,6 +24,6 @@ microcosm/*.csv
 microcosm/*.tsv
 microcosm/*log*
 microcosm/*.ipynb
-notebooks/.ipynb_checkpoints/*
-core_functions/__pycache__/*
+.virtual_documents/*
+core_data/*
 *.tsv*

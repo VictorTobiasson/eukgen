@@ -151,10 +151,8 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
 
 #iqtree saturates at 8 threads for most alignments
 microcosm_format_opts = {
-                         # 'original_query_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
-                         # 'original_target_DB': '/data/luojaa/eukgen/mmseqs/kog_proteins',
-                         'original_query_DB': '/data/luojaa/eukgen/mmseqs_victor/euk72_ep/euk72_ep.repseq',
-                         'original_target_DB': '/data/luojaa/eukgen/mmseqs_victor/prok2111_as/prok2111_as.repseq',
+                         'original_query_DB': '/data/luojaa/eukgen/processing/asgard2023/asgard2023_clean.repseq',
+                         'original_target_DB': '/data/luojaa/eukgen/processing/prok2111/prok2111.repseq.minHGT',
                          'taxonomy_mapping': merged_protein_tree_taxonomy,
                          'max_euk_sequences': 30,
                          'max_prok_sequences': 70,
