@@ -43,12 +43,28 @@ def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_
     query_fasta = f"{basename}.query.fasta"
     target_fasta = f"{basename}.target.fasta"
 
-    print(f'{threadID_string} Started \n', end='')
-    print(f'{threadID_string} Preparing mmseqs data for query\n', end='')
+    #scrub DELETE entries from microcosms
+    taxonomy_mapping = pd.read_csv(microcosm_format_opts['taxonomy_mapping'], sep='\t',
+                                   names=['acc', 'orgid', 'superkingdom', 'class'], index_col=0)
 
-    # create a new DB for the query and target sequences
-    subprocess.run(f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {query_acc} {original_query_DB} {query_seqDB}".split())
-    subprocess.run(f'mmseqs convert2fasta -v 0 {query_seqDB} {query_fasta}'.split())
+    # query accs
+    accs = pd.read_csv(file_root + file_basename + '.query.acc', header=None, names=['acc'], index_col=0)
+    filter_accs = taxonomy_mapping.loc[accs.index] != 'DELETE'
+    index_to_keep = filter_accs[filter_accs['class']].index
+    pd.Series(index_to_keep).to_csv(file_root + file_basename + '.query.acc', index=None, header=None)
+
+    # target accs
+    accs = pd.read_csv(file_root + file_basename + '.target.acc', header=None, names=['acc'], index_col=0)
+    filter_accs = taxonomy_mapping.loc[accs.index] != 'DELETE'
+    index_to_keep = filter_accs[filter_accs['class']].index
+    pd.Series(index_to_keep).to_csv(file_root + file_basename + '.target.acc', index=None, header=None)
+
+    #preapare fasta files from accession lists
+    query_fasta, target_fasta = microcosm.prepare_mmseqs(file_root,
+                                                         file_basename,
+                                                         original_query_DB=microcosm_format_opts['original_query_DB'],
+                                                         original_target_DB=microcosm_format_opts['original_target_DB'],
+                                                         save_intermediate_files=save_intermediate_files)
 
     print(f'{threadID_string} Preparing mmseqs data for merged target hits\n', end='')
 
