@@ -8,6 +8,7 @@ path_processing = path_root + 'processing/'
 path_tmp = path_root + 'tmp/'
 path_testing = path_root + 'testing/'
 path_notebooks = path_root + 'notebooks/'
+path_log_swarm = path_root + 'log/swarm_out/'
 
 # mmseqs_scratch
 path_mmseqs_tmp = path_tmp + 'mmseqs_scratch/'
