@@ -172,8 +172,8 @@ def plot_cumsum_counts(series, formatted_data=False, plot_type='merged', title='
     # plot cumulative distribution
     chart_cumsum = alt.Chart(countDF, title=title).mark_line(color=colorlib['twilight_shifted_r_perm'][2],
                                                              strokeWidth=3).encode(
-        x=alt.X(x_label, title=x_label, scale=alt.Scale(domain=x_range, type=x_scale_type)),
-        y=alt.Y('frac_cumsum', title=f'Cumulative sum of {y_label}', scale=alt.Scale(domain=[0, 1]),
+        x=alt.X(x_label, title=x_label, scale=alt.Scale(nice=False, domain=x_range, type=x_scale_type)),
+        y=alt.Y('frac_cumsum', title=f'Cumulative sum of {y_label}', scale=alt.Scale(nice=False, domain=[0, 1]),
                 axis=alt.Axis(labelAlign=line_axis_labelAlign)),
         color=alt.Color('series_label'),
         tooltip=alt.Tooltip(['series_label', x_label, y_label, 'frac_cumsum'])
@@ -182,8 +182,8 @@ def plot_cumsum_counts(series, formatted_data=False, plot_type='merged', title='
     # plot cumulative distribution
     chart_weighted_cumsum = alt.Chart(countDF, title=title).mark_line(color=colorlib['twilight_shifted_r_perm'][2],
                                                                       strokeWidth=3).encode(
-        x=alt.X(x_label, title=x_label, scale=alt.Scale(domain=x_range, type=x_scale_type)),
-        y=alt.Y('weighted_frac_cumsum', title=f'Weighted cumulative sum of {y_label}', scale=alt.Scale(domain=[0, 1]),
+        x=alt.X(x_label, title=x_label, scale=alt.Scale(nice=False, domain=x_range, type=x_scale_type)),
+        y=alt.Y('weighted_frac_cumsum', title=f'Weighted cumulative sum of {y_label}', scale=alt.Scale(nice=False, domain=[0, 1]),
                 axis=alt.Axis(labelAlign=line_axis_labelAlign)),
         color=alt.Color('series_label'),
         tooltip=alt.Tooltip(['series_label',x_label, weighted_y_label, 'weighted_frac_cumsum'])
@@ -192,9 +192,9 @@ def plot_cumsum_counts(series, formatted_data=False, plot_type='merged', title='
     # plot value distribution
     chart_bar = alt.Chart(countDF_plot).mark_line(interpolate='step-after',
                                              fillOpacity=0.05, line=True).encode(
-        x=alt.X(x_label + ':Q', scale=alt.Scale(domain=x_range, type=x_scale_type),
+        x=alt.X(x_label + ':Q', scale=alt.Scale(nice=False, domain=x_range, type=x_scale_type),
                 axis=alt.Axis(labelAlign=area_axis_labelAlign)),
-        y=alt.Y(y_label, scale=alt.Scale(domain=y_range, type=y_scale_type)),
+        y=alt.Y(y_label, scale=alt.Scale(nice=False, domain=y_range, type=y_scale_type)),
         color = alt.Color('series_label'),
         fill=alt.Fill('series_label'),
         tooltip=alt.Tooltip(['series_label', x_label, y_label, 'frac_cumsum'])
@@ -203,9 +203,9 @@ def plot_cumsum_counts(series, formatted_data=False, plot_type='merged', title='
     # plot value distribution
     chart_weighted_bar = alt.Chart(countDF_plot).mark_line(interpolate='step-after',
                                                       fillOpacity=0.05, line=True).encode(
-        x=alt.X(x_label + ':Q', scale=alt.Scale(domain=x_range, type=x_scale_type),
+        x=alt.X(x_label + ':Q', scale=alt.Scale(nice=False, domain=x_range, type=x_scale_type),
                 axis=alt.Axis(labelAlign=area_axis_labelAlign)),
-        y=alt.Y(weighted_y_label, scale=alt.Scale(domain=y_range, type=y_scale_type)),
+        y=alt.Y(weighted_y_label, scale=alt.Scale(nice=False, domain=y_range, type=y_scale_type)),
         color=alt.Color('series_label'),
         fill=alt.Fill('series_label'),
         tooltip=alt.Tooltip(['series_label', x_label, weighted_y_label, 'weighted_frac_cumsum'])

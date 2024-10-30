@@ -74,9 +74,9 @@ exe_icarus_environment = 'icarus'
 
 # mmseqs cascaded clustering parameters
 mmseqs_cascade_opts = {'cascade_steps': 4,
-                       'nonredundant_cluster': '-s 3 -c 0.8 --cov-mode 0 --min-seq-id 0.9 --cluster-reassign 1 --max-iterations 1 --max-seqs 1000 --remove-tmp-files',
-                       'initial_cluster': '-s 4 -c 0.8 --cov-mode 0 -e 1e-10 --cluster-steps 2 --cluster-reassign 1 --max-seqs 1000 --remove-tmp-files',
-                       'initial_search': '-s 5 -c 0.8 --cov-mode 0 --add-self-matches 1 -a --max-seqs 1000 --num-iterations 2 --remove-tmp-files',
+                       'nonredundant_cluster': '-s 2 -c 0.8 --cov-mode 0 --min-seq-id 0.9 --cluster-reassign 1 --max-iterations 1 --max-seqs 1000 --remove-tmp-files',
+                       'initial_cluster': '-s 3 -c 0.8 --cov-mode 0 -e 1e-10 --cluster-steps 2 --cluster-reassign 1 --max-seqs 1000 --remove-tmp-files',
+                       'initial_search': '-s 4 -c 0.8 --cov-mode 0 --add-self-matches 1 -a --max-seqs 1000 --num-iterations 2 --remove-tmp-files',
                        'result2profile': '-e 1E-10 --e-profile 1E-10 --cov 0.8',
                        'profile2consensus': '',
                        'cascade_search': '-s 7.5 -c 0.8 --cov-mode 0 --add-self-matches 1 -a --max-seqs 500 --num-iterations 1 --remove-tmp-files',
@@ -124,15 +124,15 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
 
 #iqtree saturates at 8 threads for most alignments
 microcosm_format_opts = {'original_query_DB': euk72_ep,
-                         'original_target_DB': prok2111_as,
-                         'taxonomy_mapping': merged_protein_tree_taxonomy,
+                         'original_target_DB': '/data/tobiassonva/data/eukgen/core_data/prok2311_as/prok2311_as.pangenome',
+                         'taxonomy_mapping': '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_revised.tax',
                          'max_euk_sequences': 30,
-                         'max_prok_sequences': 30,
+                         'max_prok_sequences': 70,
                          'filter_entropy': 0.15,
                          'filter_length_frac': 0.2,
                          'threads': 8,
-                         'muscle_reps': 1,
-                         'muscle_timeout': 3600,
+                         'muscle_reps': 3,
+                         'muscle_timeout': 7200,
                          'evo_model_params': '-m MFP -mset LG,Q.pfam --cmin 4 --cmax 12'
                          }
 

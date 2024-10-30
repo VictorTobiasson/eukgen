@@ -354,10 +354,6 @@ def parse_HHsuiteHHR(entry):
     # for each such start process the target_data and alignment_blocks
     for i in range(len(alignment_starts) - 1):
         alignment = entry[alignment_starts[i]:alignment_starts[i + 1]]
-        # if final entry
-        if i == (len(alignment_starts) - 2): 
-            # include final line of entry, "Confidence"
-            alignment = entry[alignment_starts[i]:] 
 
         # get the name of the target as the first line after "No X"
         target_names.append(alignment[1].strip('>'))

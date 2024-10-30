@@ -23,16 +23,16 @@ def structure_files(root, query, query_hits, query_clusters, target_clusters):
         outfile.write(pd.DataFrame(members).to_csv(sep='\t', header=None))
 
 # main script for formatting query and target .fasta and .cluster.tsv files
-def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_DB, save_intermediate_files=False):
 
+def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_DB, save_intermediate_files=False):
     import subprocess
 
     # configure paths and flags
-    thread = current_process().pid
+    thread = 1
     basename = file_root + file_basename
 
     threadID_string = f'{thread} | {file_basename}:'
-    #subprocess.run(f'mkdir {query_root}/tmp'.split())
+    # subprocess.run(f'mkdir {query_root}/tmp'.split())
 
     query_acc = f"{basename}.query.acc"
     target_acc = f"{basename}.target.acc"
@@ -44,23 +44,42 @@ def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_
     target_fasta = f"{basename}.target.fasta"
 
     print(f'{threadID_string} Started \n', end='')
-    print(f'{threadID_string} Preparing mmseqs data for query\n', end='')
 
     # create a new DB for the query and target sequences
-    subprocess.run(f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {query_acc} {original_query_DB} {query_seqDB}".split())
+    print(f'{threadID_string} Preparing mmseqs data for query hits\n', end='')
+    subprocess.run(
+        f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {query_acc} {original_query_DB} {query_seqDB}".split())
     subprocess.run(f'mmseqs convert2fasta -v 0 {query_seqDB} {query_fasta}'.split())
 
-    print(f'{threadID_string} Preparing mmseqs data for merged target hits\n', end='')
-
-    # create a new DB for the query sequences and cluster it
-    # create a new DB for the query and target sequences
-    subprocess.run(f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {target_acc} {original_target_DB} {target_seqDB}".split())
+    print(f'{threadID_string} Preparing mmseqs data for target hits\n', end='')
+    subprocess.run(
+        f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {target_acc} {original_target_DB} {target_seqDB}".split())
     subprocess.run(f'mmseqs convert2fasta -v 0 {target_seqDB} {target_fasta}'.split())
+
+    # create tsv with lineage information from spoofed clustering result
+    # create a file with double mmseqs_id column for DB to mimic result.tsv
+    print(f'{threadID_string} Retreiving taxonomy lineages\n', end='')
+
+    subprocess.run(f"cut -f1 {query_seqDB}.index | awk -v OFS='\t' '{{print $1, $1}}' > {query_seqDB}.tmp", shell=True)
+    subprocess.run(f'mmseqs tsv2db -v 0 {query_seqDB}.tmp {query_seqDB}.tmp'.split())
+    subprocess.run(f'mmseqs addtaxonomy -v 0 --tax-lineage 1 {query_seqDB} {query_seqDB}.tmp {query_seqDB}.tax'.split())
+    subprocess.run(f'mmseqs createtsv -v 0 {query_seqDB} {query_seqDB} {query_seqDB}.tax {query_seqDB}.tsv'.split())
+
+    subprocess.run(f"cut -f1 {target_seqDB}.index | awk -v OFS='\t' '{{print $1, $1}}' > {target_seqDB}.tmp",
+                   shell=True)
+    subprocess.run(f'mmseqs tsv2db -v 0 {target_seqDB}.tmp {target_seqDB}.tmp'.split())
+    subprocess.run(
+        f'mmseqs addtaxonomy -v 0 --tax-lineage 1 {target_seqDB} {target_seqDB}.tmp {target_seqDB}.tax'.split())
+    subprocess.run(f'mmseqs createtsv -v 0 {target_seqDB} {target_seqDB} {target_seqDB}.tax {target_seqDB}.tsv'.split())
 
     # clean
     if not save_intermediate_files:
         subprocess.run(f'mmseqs rmdb -v 0 {query_seqDB}'.split())
         subprocess.run(f'mmseqs rmdb -v 0 {target_seqDB}'.split())
+        subprocess.run(f'mmseqs rmdb -v 0 {query_seqDB}_h'.split())
+        subprocess.run(f'mmseqs rmdb -v 0 {target_seqDB}_h'.split())
+        subprocess.run(f'rm {target_seqDB}.tmp* {target_seqDB}.tax*', shell=True)
+        subprocess.run(f'rm {query_seqDB}.tmp* {query_seqDB}.tax*', shell=True)
         subprocess.run(f"find {file_root} -type l -exec unlink {{}} \\;", shell=True)
 
     return query_fasta, target_fasta

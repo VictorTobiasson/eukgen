@@ -108,6 +108,7 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
     # merge fasta files and leaf mapping and realign
     merged_fasta = file_root + file_basename + '.merged.fasta'
     subprocess.run(f'cat {query_fasta} {target_fasta} > {merged_fasta}', shell=True)
+    #subprocess.run(f'cat {file_root + file_basename}  {file_root + file_basename} > {merged_fasta}', shell=True)
     subprocess.run(f'cat {query_fasta + ".leaf_mapping"} {target_fasta + ".leaf_mapping"} > {merged_fasta + ".leaf_mapping"}', shell=True)
 
     print(f'Merged prok and euk files and aligning using muscle')
@@ -122,7 +123,6 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
     aln = fasta_to_dict(file=muscle_fasta)
     aln_filter = filter_by_entropy(seq_dict = aln,
                                    entropy_min = microcosm_format_opts['filter_entropy'])
-                                   # seq_length_frac_min = microcosm_format_opts['filter_length_frac'])
 
     if save_intermediate_files:
         subprocess.run(f'cp {muscle_fasta} {muscle_fasta}.uncropped'.split())
