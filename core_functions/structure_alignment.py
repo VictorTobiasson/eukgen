@@ -87,8 +87,15 @@ def run_ICARUS(root, pdb1, pdb2, threads, level=1):
     # of the written files the renum.pdb file is renumbered following domain rearrangements
     result_files = subprocess.run(f'find {icarus_output_models} -type f'.split(), capture_output=True, text=True).stdout
     pdb_files = [file for file in result_files.split('\n') if file.split('PUs')[-1] in ['_renum.pdb']]
-    latest_file = sorted(pdb_files, key=os.path.getctime)[0]
-    subprocess.run(f'cp {latest_file} ../models/{pdb1_name}'.split())
+    latest_file = sorted(pdb_files, key=os.path.getctime)[-1] # ascending order
+    pdb1_name_renum = pdb1_name.replace(".pdb", ".renum.pdb")
+    subprocess.run(f'cp {latest_file} ../models/{pdb1_name_renum}'.split())
+
+    # also copy latest unordered file
+    pdb1_name_unordered = pdb1_name.replace(".pdb", ".raw.pdb")
+    pdb_files_ognum = [file for file in result_files.split('\n') if file.split('PUs')[-1] in ['.pdb']]
+    latest_file_ognum = sorted(pdb_files_ognum, key=os.path.getctime)[0]
+    subprocess.run(f'cp {latest_file_ognum} ../models/{pdb1_name_unordered}'.split())
 
     # return to original directory and remove tmp
     os.chdir(origin_dir)

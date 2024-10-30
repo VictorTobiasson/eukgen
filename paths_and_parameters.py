@@ -48,12 +48,8 @@ path_taxonomy = path_core_data + 'taxonomy/'
 ncbi_taxonomy = path_taxonomy + 'ncbi_tax_231127/'
 
 # merged tax files from prok2111_as and euk72_ep with columns ['acc', 'orgid', 'superkingdom', 'class']
-<<<<<<< HEAD
 merged_protein_tree_taxonomy =  '/data/luojaa/eukgen/mmseqs_victor/euk_prok_merged_protein_revised.tax'
 #merged_protein_tree_taxonomy = "/data/luojaa/taxids/kegg_new_classes.mcrcsm.tsv"
-=======
-merged_protein_tree_taxonomy = path_taxonomy + 'euk_prok_merged_protein_revised.tax'
->>>>>>> 8dc222f478be0694ad2eb0599177033edd3bb873
 
 # protein tax mapping and species lienage mapping from NCBI
 euk72_protein_taxonomy = path_taxonomy + 'euk72_protein_taxonomy.pkl'
@@ -74,7 +70,7 @@ exe_mmseqs = 'mmseqs'
 exe_hhsearch_omp = 'hhsearch_omp'
 exe_hhblits_omp = 'hhblits_omp'
 exe_foldseek = 'foldseek'
-exe_icarus = 'python -u /home/tobiassonva/data/software/ICARUS/icarus.py'
+exe_icarus = 'python -u /data/tobiassonva/data/software/ICARUS/icarus.py'
 exe_icarus_environment = 'icarus'
 
 # mmseqs cascaded clustering parameters
