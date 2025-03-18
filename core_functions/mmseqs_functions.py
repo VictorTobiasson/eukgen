@@ -270,7 +270,7 @@ def realign_all_fastas_swarm(fasta_root, swarm_opts, max_sequences=250, filter_e
 # swarm header formatted from swarm opts dictionary of parameters
 # requires ONLY fasta files in fasta_root
 # this is as we avoid .fasta extension as hhmake takes index name from file name
-def realign_all_fastas_swarm_binned(fasta_root, swarm_opts, max_swarms=1000, max_sequences=250, filter_entropy=0.5, muscle_reps=10):
+def realign_all_fastas_swarm_binned(fasta_root, swarm_opts, max_swarms=1000, max_sequences=250, filter_entropy=0, gap_fraction=1, muscle_reps=10):
     from paths_and_parameters import path_tmp, exe_python, exe_realignment, muscle_realignment_timeout
     from core_functions.helper_functions import swarm_submit_with_lock, greedy_pack
 
@@ -309,7 +309,7 @@ def realign_all_fastas_swarm_binned(fasta_root, swarm_opts, max_swarms=1000, max
     for bin in packed_items:
         command_list = []
         for fasta in bin:
-            command_list.append(f'{exe_python} -u {exe_realignment} --fasta {fasta} --threads {threads} --max_seqs {max_sequences} --filter_entropy {filter_entropy} --muscle_reps {muscle_reps} --muscle_timeout {muscle_realignment_timeout}')
+            command_list.append(f'{exe_python} -u {exe_realignment} --fasta {fasta} --threads {threads} --max_seqs {max_sequences} --gap_fraction {gap_fraction} --filter_entropy {filter_entropy} --muscle_reps {muscle_reps} --muscle_timeout {muscle_realignment_timeout}')
 
         swarm.write('; '.join(command_list) + '\n')
 
@@ -328,9 +328,11 @@ def mmseqs_form_pangenome(mmseqs_seqDB,
                    evaluation_cutoff = 0.5,
                    threads=16,
                    mmseqs_exe = 'mmseqs',
-                   mmseqs_cluster_opts = '-s 3 -c 0.8 --cov-mode 0',
+                   mmseqs_cluster_opts = '-s 7 -e 1E-10 -c 0.8 --cov-mode 0',
                    save_intermedidate_files = True,
                    ):
+    
+    import pandas as pd
     
     # housekeeping and input checking
     fam_abbr = {'superkingdom':'d', 'phylum':'p', 'class':'c', 'order':'o',
@@ -352,7 +354,7 @@ def mmseqs_form_pangenome(mmseqs_seqDB,
     # calculate taxonomy
     subprocess.run(f'{mmseqs_exe} taxonomyreport {mmseqs_seqDB} {mmseqs_seqDB} {working_root}/taxreport '.split())
     
-    # run cluster for each DB agaisnt itself -s 7 -e 1E-10 -c 0.8 --cov-mode 0 no min seq id
+    # run cluster for each DB against itself "-s 7 -e 1E-10 -c 0.8 --cov-mode 0" no min seq id
     subprocess.run(f'{mmseqs_exe} cluster {mmseqs_seqDB} {working_root}/cluster {working_root}/mmseqs_tmp {mmseqs_cluster_opts} {threads}'.split())
     
     # add taxonomy with --tax-lineage 1 to get lineages
@@ -374,7 +376,6 @@ def mmseqs_form_pangenome(mmseqs_seqDB,
     all_valid_ranks = taxDF[taxDF['rank'] == evaluation_rank].taxon.values
     num_valid_ranks = len(set(all_valid_ranks))
 
-    
     # load search data
     cluster_data = pd.read_csv(f'{working_root}/cluster.tsv', sep = '\t', 
                               names = ['query','target','taxid','rank','taxname','lineage'], index_col=0)

@@ -49,7 +49,7 @@ def build_HHsuite_database_from_MSAs(fasta_root, output_root, DB_name, mpis):
     return output_name
 
 #format and run hhsuite search swarm query and targetDB is root name as XXX (without _hhm.ffdata)
-def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, threads=1, search_type='hhblits', search_opts='', run_with_lscratch=True):
+def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, threads=1, search_type='hhblits', search_opts='', run_with_lscratch=True, return_blast_m6=False):
 
     import subprocess
 
@@ -88,7 +88,7 @@ def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, thr
             batchfile.writelines(index_batch)
 
         #add execution line to swarmfile
-        swarm.write(f'{exe_python} -u {exe_hhsuite_search} --query_hhm_ffindex {index_batch_name} --query_hhm_ffdata {queryDB}_hhm.ffdata --targetDB {targetDB} --output_root {output_root} --threads {threads} --search_type {search_type} --search_opts "{search_opts}" --run_with_lscratch {run_with_lscratch} \n')
+        swarm.write(f'{exe_python} -u {exe_hhsuite_search} --query_hhm_ffindex {index_batch_name} --query_hhm_ffdata {queryDB}_hhm.ffdata --targetDB {targetDB} --output_root {output_root} --threads {threads} --search_type {search_type} --search_opts "{search_opts}" --run_with_lscratch {run_with_lscratch} --return_blast_m6 {return_blast_m6}\n')
 
     swarm.close()
 
@@ -99,34 +99,10 @@ def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, thr
 
     return output_root
 
-#OLD
-def parse_hhsuite_search_results(search_ffdata):
-
-    import core_functions.parseHHsuite as HH
-
-    basename = search_ffdata.split('.ffdata')[0]
-    output_pkl = basename+'.pkl'
-    output_pkl_filtered = basename+'.filtered.pkl'
-    output_tsv_filtered = basename + '.filtered.tsv'
-
-    #parse ffdata and save .pkl
-    new_data = HH.load_HHBlitsData(search_ffdata)
-    new_data.write_pkl(output_pkl)
-
-    print(f'Parsing as HHBlitsData object: {search_ffdata}')
-    for key, query in new_data.data.items():
-        query.add_self_hit()
-        #query.filter_numeric(field='Pairwise_cov', min=20, replace=True, keep_self=True)
-        query.filter_numeric(field='Prob', min=50, replace=True, keep_self=True)
-
-    print(f'Writing {output_pkl_filtered}')
-    new_data.write_pkl(output_pkl_filtered)
-    new_data.write_data_tsv(output_tsv_filtered)
-
-    return
-
+# +
+# old and buggy code, superceeded by parse_hhsuite_search_results_streaming()
 #parse and merge all search.ffdata from a folder to a single parse_HHsuite object
-#FILTERS ARE BROKEN!?
+
 def merge_hhsuite_search_results(search_root, output_basename, write_tsv=True, filter_cov=False, filter_prob=False):
 
     import os
@@ -167,6 +143,61 @@ def merge_hhsuite_search_results(search_root, output_basename, write_tsv=True, f
         all_data.write_data_tsv(output_basename+'.tsv')
 
     return all_data
+
+# parse and merge all search.ffdata from a folder to a single parse_HHsuite object
+# parse data in streaming so that a single ouptut object is appended to without occupying main process memory
+def parse_hhsuite_search_results_streaming(ffdata_files, output_basename, write_alignment=False, filter_cov=False, filter_prob=False, add_self=False):
+
+    import os
+    import core_functions.parseHHsuite as HH
+
+    # no output header exists yet
+    header = False
+    
+    
+    print(f'Merging all files from {search_root} to {output_basename}')
+
+    # buffer to avoid memory overflow in main process
+    with open(output_basename + '.tsv', 'w', buffering=1) as merged:
+
+        #loop over files and add write to output
+        for i, file in enumerate(ffdata_files):
+            print(f'Parsing file #{i}: {file}')
+            #load new data object from file
+            new_data = HH.load_HHBlitsData(file)
+
+            #filter new data object
+            if filter_cov or filter_prob:
+                for key, query in new_data.data.items():
+                    
+                    if add_self:
+                        query.add_self_hit()
+                    
+                    if filter_cov:
+                        query.filter_numeric(field='Pairwise_cov', min=filter_cov, replace=True, keep_self=add_self)
+                    if filter_prob:
+                        query.filter_numeric(field='Prob', min=filter_prob, replace=True, keep_self=add_self)
+                    
+            # if header has not been written yet
+            if not header:
+                header = 'Query\t' + '\t'.join([key for key in new_data.data[new_data.query_names[0]].hit_dict.keys()]) + '\n'
+                
+                # strip alignment info from header if skipping alignment
+                if not write_alignment:
+                    header = header.rsplit('\t', 6)[0] + '\n'
+                
+                merged.write(header)
+            
+            # write all values to outfile
+            for key, item in new_data.data.items():
+                # if there are any target for query
+                if item.hit_dict['Target'] != []:
+                    merged.write(item.format_data_tsv(format_alignment=write_alignment) + '\n')               
+
+    return output_basename + '.tsv'
+
+
+# -
 
 #parse and merge all search.blast.ffdata from a folder to a single tsv
 def merge_hhsuite_blasttab_results(search_root, output_basename):

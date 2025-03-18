@@ -30,16 +30,21 @@ class HHblitsData:
         with open(file, 'rb') as infile:
             self.add_entries(pickle.load(infile).data)
 
-    def write_data_tsv(self, filename):
-        # write the header info
-        header = 'Query\t' + '\t'.join([key for key in self.data[self.query_names[0]].hit_dict.keys()]) + '\n'
+    def write_data_tsv(self, filename, alignment=True):
 
-        # write each entry to file
         with open(filename, 'w') as outfile:
-            outfile.write(header)
+            # write the header info
+            header = 'Query\t' + '\t'.join([key for key in self.data[self.query_names[0]].hit_dict.keys()]) + '\n'
 
+            # strip alignment info from header if skipping alignment
+            if not alignment:
+                header = header.rsplit('\t', 6)[0] + '\n'
+
+            outfile.write(header)
+            
+            # write all values to outfile
             for key, item in self.data.items():
-                outfile.write(item.format_data_tsv() + '\n')
+                outfile.write(item.format_data_tsv(format_alignment=alignment) + '\n')
 
     def write_query_tsv(self, filename):
         # write header info
@@ -66,18 +71,24 @@ class HHblitsQuery:
         self.name = self.query_dict['Query']
         self.size = len(hit_dict['Target'])
 
-    def format_data_tsv(self):
+    def format_data_tsv(self, format_alignment=True):
         # for multiple hits
         if isinstance(self.hit_dict['Target'], list):
             # transform into wide form for printing
             hit_items_T = transpose_list_of_lists([value for key, value in self.hit_dict.items()])
 
             # tsv join and add query name as first column
-            tsv_lines = '\n'.join([self.name + '\t' + '\t'.join([str(n) for n in item]) for item in hit_items_T])
-
+            if format_alignment:
+                tsv_lines = '\n'.join([self.name + '\t' + '\t'.join([str(n) for n in item]) for item in hit_items_T])
+            else:
+                tsv_lines = '\n'.join([self.name + '\t' + '\t'.join([str(n) for n in item][:-6]) for item in hit_items_T])
+        
         # for single hits
         else:
-            tsv_lines = self.name + '\t' + '\t'.join([str(value) for key, value in self.hit_dict.items()])
+            if format_alignment:
+                tsv_lines = self.name + '\t' + '\t'.join([str(value) for key, value in self.hit_dict.items()])
+            else:
+                tsv_lines = self.name + '\t' + '\t'.join([str(value) for key, value in self.hit_dict.items()][:-6])
 
         return tsv_lines
 
@@ -97,6 +108,7 @@ class HHblitsQuery:
             if self.name not in self.hit_dict['Target']:
                 print(f'{self.name} has no self hit! Will not filter as keep_self=True')
                 return None
+            
             else:
                 self_hit_index = [i for i, value in enumerate(self.hit_dict['Target']) if value == self.name]
                 filter_list = [entry if i not in self_hit_index else True for i, entry in enumerate(filter_list)]

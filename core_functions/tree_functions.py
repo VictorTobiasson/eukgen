@@ -19,7 +19,7 @@ def get_outlier_nodes_by_invgamma(tree, p_low=0, p_high=0.99, only_leaves=False,
     else:
         node_dists = [(node, node.dist) for node in tree.traverse()]
 
-    dist_series = pd.Series([i[1] for i in node_dists])
+    dist_series = pd.Series([i[1] for i in node_dists if i[1] > 0.01])
 
     fit_alpha, fit_loc, fit_beta = stats.invgamma.fit(dist_series.values)
 
@@ -250,6 +250,7 @@ def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophylet
     return tree, crop_dict
 
 
+# +
 # take dict of leaf_acc:[collapsed_leaf, collapsed_leaf, collapsed_leaf ...]
 # transform into longfor annotated DF for tax mapping
 # taxDF is acc: [orgid, superkingdom, class]
@@ -264,7 +265,6 @@ def format_leafDF(crop_dict, taxDF):
 
     return leafDF
 
-
 # update existing leafDF with new dict of cropped leaves
 def update_leafDF(crop_dict, leafDF):
     inverse_dict = {acc: leaf for leaf, accs in crop_dict.items() for acc in accs}
@@ -272,7 +272,6 @@ def update_leafDF(crop_dict, leafDF):
     leafDF.loc[leaf_filtered.index, 'leaf'] = [inverse_dict[acc] for acc in leaf_filtered.leaf.values]
 
     return leafDF
-
 
 # map data from leafDF to tree leaves
 def map_leafDF(tree, leafDF):
@@ -289,6 +288,8 @@ def map_leafDF(tree, leafDF):
 
     return tree
 
+
+# -
 
 # replace an LCA node with its closes leaf, tracking mergers in crop_dict
 def collapse_LCA(node, crop_dict, preserve_taxa=None):
@@ -337,8 +338,8 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
     for leaf in all_leaves:
         leaf.add_feature('to_check', True)
 
-    # consider all points from leaf with atleast one sequence in tax to root if not already checked
-    tax_leaves = [leaf for leaf in all_leaves if tax in leaf.taxa and leaf.to_check]
+    # consider all points from leaf with at least one sequence in tax to root if not already checked
+    tax_leaves = [leaf for leaf in all_leaves if tax == leaf.taxa and leaf.to_check]
 
     while nodes_found < n_best:
 
@@ -356,8 +357,8 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
         size_tree = sum([sum(leaf.counts) for leaf in all_leaves if leaf.to_check])
 
         # total unchecked labels of tax on tree
-        size_tax = sum(
-            [leaf.counts[leaf.taxa.split('|').index(tax)] if tax in leaf.taxa and leaf.to_check else 0 for leaf in tax_leaves])
+        size_tax = sum([leaf.counts[leaf.taxa.split('|').index(tax)] 
+                        if tax == leaf.taxa and leaf.to_check else 0 for leaf in tax_leaves])
 
         node_weight_data = []
 
@@ -374,7 +375,7 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
 
             for leaf in node_leaves:
                 size_clade += sum(leaf.counts)
-                if tax in leaf.taxa:
+                if tax == leaf.taxa:
                     size_tax_in_clade += leaf.counts[leaf.taxa.split('|').index(tax)]
 
             node_weight = (size_tax_in_clade / size_clade) * (size_tax_in_clade / size_tax)
@@ -398,7 +399,7 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
                 leaf.to_check = False
 
             # update nodes to consider
-            tax_leaves = [leaf for leaf in tax_leaves if tax in leaf.taxa and leaf.to_check]
+            tax_leaves = [leaf for leaf in tax_leaves if tax == leaf.taxa and leaf.to_check]
 
             # count node and add to list of found nodes
             nodes_found += 1

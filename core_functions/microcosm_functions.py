@@ -88,7 +88,7 @@ def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_
 # read fasta, align with FAMSA, filter and construct FastTree,
 # crop eaves to size and write new fasta with only cropeed tree leaf sequences
 # if supplied with taxonomy, will do taxonomically aware cropping
-def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_intermediate_files=True, taxDF=None):
+def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_intermediate_files=True, taxDF=None, min_clade_size=2):
 
     thread = current_process().pid
     threadID_string = f'{thread} | {base_fasta}:'
@@ -135,11 +135,12 @@ def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_i
     tree = Tree(f'{base_fasta}.fasttree')
 
     # if taxonomic information is supplies crop while optimizing taxa
+    # retainat least minimum clade size for monophyletic taxa
     if taxDF is not None:
-
         from core_functions.tree_functions import crop_leaves_to_size_considering_taxa
         tree, leafDF, crop_dict = crop_leaves_to_size_considering_taxa(tree, taxDF, max_leaf_size,
-                                                            min_clade_size=2, min_clade_purity=0.9, LCA_search_depth=3)
+                                                                       min_clade_size=min_clade_size, 
+                                                                       min_clade_purity=0.9, LCA_search_depth=5)
 
         # save leaf mappings from DF
         print(threadID_string + f' Writing .leaf_mapping after cropping')
@@ -489,10 +490,7 @@ def retrieve_LCA_scope(LCA_leaf_names, leafDF):
                       'Nitrospirota': ['root', 'cellular organisms', 'Bacteria', 'Nitrospirota'],
                       'DELETE': ['DELETE']}
 
-    print(LCA_leaf_names)
-
     leaf_clades = leafDF[leafDF.index.isin(LCA_leaf_names) & (leafDF['class'] != 'DELETE')]['class'].unique()
-    print(leaf_clades)
 
     # if no class names returned something is wrong
     if len(leaf_clades) < 1:
@@ -742,6 +740,11 @@ def color_tree(tree, savefile=None, view_in_notebook=False):
     LCA_euk_node_style['size'] = 10
     LCA_euk_node_style['fgcolor'] = '#5c7fe1'
     LCA_euk_node_style['bgcolor'] = '#eff3ff'
+    
+    LCA_asg_node_style = NodeStyle()
+    LCA_asg_node_style['size'] = 10
+    LCA_asg_node_style['fgcolor'] = '#dbcd6e'
+    LCA_asg_node_style['bgcolor'] = '#fffeef'
 
     LCA_prok_node_style = NodeStyle()
     LCA_prok_node_style['size'] = 8
@@ -761,9 +764,9 @@ def color_tree(tree, savefile=None, view_in_notebook=False):
             if node.LCA == 'Eukaryota':
                 node.set_style(LCA_euk_node_style)
                 #node.add_face(TextFace(node.LCA, fsize=8), column = 1)
-
-                for leaf in node.get_leaves():
-                    pass
+                
+            elif node.LCA == 'Asgard':
+                node.set_style(LCA_asg_node_style)
 
             else:
                 node.set_style(LCA_prok_node_style)

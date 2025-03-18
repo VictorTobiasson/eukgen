@@ -5,8 +5,8 @@ import time
 import numpy as np
 
 
-#helper functions involved in IO
-#small parsing tasks, general functions or repeated calculations
+# helper functions involved in IO
+# small parsing tasks, general functions or repeated calculations
 
 # SEQUENCE ALIGNMENTS OPERATIONS
 
@@ -47,7 +47,7 @@ def fasta_to_dict(fastastring=None, file=None):
 
 
 # returns simple single line fasta from {id:seq} dict
-def dict_to_fasta(seq_dict, write_file=False, verbose=True):
+def dict_to_fasta(seq_dict, write_file=False, verbose=False):
     fasta_str = '\n'.join(f'>{key}\n{value}' for key, value in seq_dict.items())
 
     if write_file != False:
@@ -88,15 +88,14 @@ def column_entropy(string, protein=True, gaptoken='-'):
     else:
         entropy_uniform = 2
 
-    gap_entropy = entropy_uniform * (string.count(gaptoken) / size)
-    information = entropy_uniform - entropy - gap_entropy
+    #gap_entropy = entropy_uniform * (string.count(gaptoken) / size)
+    information = entropy_uniform - entropy #- gap_entropy
 
     return max(information, 0)
 
 
-
 # columnwise cut based on criteria
-def filter_by_entropy(seq_dict, entropy_min, seq_length_frac_min=None, filter_accs=[], gaptoken='-'):
+def filter_by_entropy(seq_dict, entropy_min, gap_fraction=0.5, seq_length_frac_min=None, filter_accs=[], gaptoken='-'):
     # transpose seqs into columns
     cols = [''.join(seq) for seq in list(zip(*seq_dict.values()))]
 
@@ -107,6 +106,10 @@ def filter_by_entropy(seq_dict, entropy_min, seq_length_frac_min=None, filter_ac
 
     else:
         filter_cols = cols
+        
+    col_height = len(cols[0])
+    
+    cols = [col for col in cols if col.count(gaptoken)/col_height <= gap_fraction]
 
     # include based on entropy threshold
     filter_cols = [col for i, col in enumerate(cols) if column_entropy(filter_cols[i], gaptoken=gaptoken) > entropy_min]
@@ -124,7 +127,6 @@ def filter_by_entropy(seq_dict, entropy_min, seq_length_frac_min=None, filter_ac
 
     # return with original keys
     return seq_dict
-
 
 # input helper to read tsv from file, merge singletons
 def read_cluster_tsv(cluster_file, split_large=False, max_size=500, batch_single=False, single_cutoff=1):
