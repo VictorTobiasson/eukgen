@@ -7,7 +7,7 @@ from core_functions.hhsuite_functions import build_HHsuite_database_from_MSAs
 
 
 #argparse define
-parser = argparse.ArgumentParser(description='Reduce fasta to size and realign using multiple rounds of muscle')
+parser = argparse.ArgumentParser(description='')
 parser.add_argument('--fasta_root', type=str, required=True, help='folder of MSAs, should ONLY contain MSAS')
 parser.add_argument('--output_root', type=str, required=True, help='folder for output DB')
 parser.add_argument('--db_name', type=str, required=True, help='root_name for _hhm, _cs219 and _a3m files')

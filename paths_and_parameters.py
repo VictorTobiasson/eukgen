@@ -123,9 +123,9 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
                       }
 
 #iqtree saturates at 8 threads for most alignments
-microcosm_format_opts = {'original_query_DB': euk72_ep,
-                         'original_target_DB': '/data/tobiassonva/data/eukgen/core_data/prok2311_as/prok2311_as.pangenome',
-                         'taxonomy_mapping': '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_revised.tax',
+microcosm_format_opts = {'original_query_DB': '/home/tobiassonva/data/eukgen/core_data/euk72_ep/euk72_ep',
+                         'original_target_DB': '/data/tobiassonva/data/eukgen/core_data/prok2311_as.zenodo/prok2311_as',
+                         'taxonomy_mapping': '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_GTDB.tax',
                          'max_euk_sequences': 30,
                          'max_prok_sequences': 70,
                          'filter_entropy': 0.15,

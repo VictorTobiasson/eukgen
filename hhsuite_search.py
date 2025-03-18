@@ -7,7 +7,7 @@ from paths_and_parameters import exe_hhblits_omp, exe_hhsearch_omp
 
 #intended to run as a split swarm submission on biowulf with lscratch as running_path
 def hhsuite_search(query_hhm_ffindex, query_hhm_ffdata, targetDB, output_root, threads=1,
-                   search_type='hhblits', search_opts='', run_with_lscratch=True):
+                   search_type='hhblits', search_opts='', run_with_lscratch=True, return_blast_m6=False):
 
     #required to avoid segfault
     os.environ['OMP_STACKSIZE'] = '32768'
@@ -38,9 +38,15 @@ def hhsuite_search(query_hhm_ffindex, query_hhm_ffdata, targetDB, output_root, t
     }
 
     if search_type == 'hhblits':
-        run_dict['search'] = f'{exe_hhblits_omp} -i {running_root}{query_basename}_hhm -d {running_root}{target_basename} -cpu {threads}, -o {output_name} -blasttab {output_name}.blast {search_opts}'
+        run_dict['search'] = f'{exe_hhblits_omp} -i {running_root}{query_basename}_hhm -d {running_root}{target_basename} -cpu {threads}, -o {output_name} {search_opts}'
+        
+        if return_blast_m6:
+            # append blast output option
+            run_dict['search'] = run_dict['search'] + f'-blasttab {output_name}.blast'
+        
     elif search_type == 'hhsearch':
-        run_dict['search'] = ''
+        print('NOT IMPLEMENTED')
+        #run_dict['search'] = ''
     else:
         print('"search_type" parameter must be "hhsearch" or "hhblits"')
 
@@ -61,6 +67,7 @@ parser.add_argument('--threads', type=int, required=False, nargs='?', const=1, h
 parser.add_argument('--search_type', type=str, required=False, nargs='?', const='hhblits', help='select from "hhsearch" or "hhblits"')
 parser.add_argument('--search_opts', type=str, required=False, nargs='?', const='', help='additional search parameters to pass to the search')
 parser.add_argument('--run_with_lscratch', type=bool, required=False, nargs='?', const=True, help='move temporary files to biowuld /lscratch/$SLURM_JOB_ID/hhsuite_search.uuid')
+parser.add_argument('--return_blast_m6', type=bool, required=False, nargs='?', const=False, help='output additional m6 format XXX.blast.{ffindex,ffdata}')
 args = parser.parse_args()
 
 
@@ -73,5 +80,6 @@ if __name__ == '__main__':
                    threads = args.threads,
                    search_type = args.search_type,
                    search_opts = args.search_opts,
-                   run_with_lscratch=args.run_with_lscratch
+                   run_with_lscratch=args.run_with_lscratch,
+                   return_blast_m6=args.return_blast_m6
                    )
