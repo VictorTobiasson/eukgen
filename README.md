@@ -1,9 +1,8 @@
-Main data repository for:
-Dominant contribution of Asgard archaea to eukaryogenesis (2024) 
+__Dominant contribution of Asgard archaea to eukaryogenesis (2025)__
 
 Tobiasson, V., Luo, J., Wolf, Y., Koonin, E.
 
-Currently (non-static) available at: 
+__Currently (non-static) available at:__ 
 
 https://www.biorxiv.org/content/10.1101/2024.10.14.618318v2
 
@@ -20,7 +19,7 @@ victor.tobiasson@nih.gov
 eugene.koonin@nih.gov
 
 
-Dependencies
+__Dependencies__
 
 altair==5.5.0
 
@@ -35,7 +34,7 @@ ete3==3.1.3
 treecluster==1.0.4
 
 
-External software 
+__External software__
 
 https://github.com/refresh-bio/FAMSA
 
