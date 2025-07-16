@@ -83,6 +83,7 @@ mmseqs_cascade_opts = {'cascade_steps': 4,
                        'cascade_clust': ''
                        }
 
+# +
 exe_realignment = path_root + 'muscle_crop_and_align.py'
 muscle_realignment_timeout = 4000
 realignment_swarm_opts = {'threads-per-process': 8,
@@ -92,6 +93,9 @@ realignment_swarm_opts = {'threads-per-process': 8,
                           'job-name': 'swarm_realignment',
                           'maxrunning': 1000,
                           }
+
+exe_annealing = path_root + 'muscle_anneal_crop_and_align.py'
+# -
 
 # hhsuite database formatting
 hhconsensus_opts = '-M 50 -maxres 65535 -v 0'
@@ -123,9 +127,9 @@ hhblits_swarm_opts_uniref = {'threads-per-process': 24,
                       }
 
 #iqtree saturates at 8 threads for most alignments
-microcosm_format_opts = {'original_query_DB': '/home/tobiassonva/data/eukgen/core_data/euk72_ep/euk72_ep',
-                         'original_target_DB': '/data/tobiassonva/data/eukgen/core_data/prok2311_as.zenodo/prok2311_as',
-                         'taxonomy_mapping': '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk_prok_merged_protein_GTDB.tax',
+microcosm_format_opts = {'original_query_DB': '/data/tobiassonva/data/eukgen/core_data/euk72_ep/euk72_ep',
+                         'original_target_DB': '/data/tobiassonva/data/eukgen/core_data/prok2311_as/prok2311_as',
+                         'taxonomy_mapping': '/data/tobiassonva/data/eukgen/core_data/taxonomy/euk72_ep_prok2311_as_merged_protein.tax',
                          'max_euk_sequences': 30,
                          'max_prok_sequences': 70,
                          'filter_entropy': 0.15,

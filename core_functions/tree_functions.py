@@ -6,19 +6,40 @@ from scipy import stats
 
 # TREE OPERATIONS
 
+# helper function to remove all clades below leaf and delete unifucations
+def remove_outlier_nodes(tree, outlier_nodes):
+    
+    # detach all outlier clades
+    for node in outlier_nodes:
+        node.detach()
+
+    # repair tree and collapse unifurcations
+    # accoring to the API this shouldn't be neccesary but the detach() funtionality appears inconsistent
+    for node in tree.traverse():
+        if len(node.children) == 1 or (node.is_leaf() and node.name == ''):
+            node.delete()
+    
+    return tree
+
+
+
 # fit inverse gamma distribution to all internal node distances and
 # exclude those beyond threshold probability
 def get_outlier_nodes_by_invgamma(tree, p_low=0, p_high=0.99, only_leaves=False, deletion_cutoff=0.15):
     from scipy import stats
 
     tree_size = len(tree)
-
+    root_distance = sum([n.dist for n in tree.children])
+    
     if only_leaves:
         node_dists = [(node, node.dist) for node in tree.get_leaves()]
 
     else:
-        node_dists = [(node, node.dist) for node in tree.traverse()]
+        # root is unique as computational root should not count as bifurcating
+        node_dists = [(node, node.dist) if not node.up.is_root() else (node, root_distance) 
+                      for node in tree.traverse()[1:]]
 
+        
     dist_series = pd.Series([i[1] for i in node_dists if i[1] > 0.01])
 
     fit_alpha, fit_loc, fit_beta = stats.invgamma.fit(dist_series.values)
@@ -43,17 +64,29 @@ def get_outlier_nodes_by_invgamma(tree, p_low=0, p_high=0.99, only_leaves=False,
 
 # fit lognorm distribution to all internal node distances, add small branch length to avoid log(0)
 # exclude those beyond threshold probability
-def get_outlier_nodes_by_lognorm(tree, p_low=0, p_high=0.99, only_leaves=False, deletion_cutoff=0.15, delete=True):
+def get_outlier_nodes_by_lognorm(tree, p_low=0, p_high=0.99, only_leaves=False, drop_leaves=False, deletion_cutoff=0.15):
     from scipy import stats
 
     tree_size = len(tree)
+    root_distance = sum([n.dist for n in tree.children])
 
+    if only_leaves and drop_leaves:
+        print('Both only_leaves and drop_leaves True. Cannot use only leaves and drop them!')
+        return [], pd.Series, (0, 0, 0), (0, 0) 
+    
     if only_leaves:
         node_dists = [(node, node.dist + 0.00000001) for node in tree.get_leaves()]
 
     else:
-        node_dists = [(node, node.dist + 0.00000001) for node in tree.traverse()]
+        # root is unique as computational root should not count as bifurcating
+        node_dists = [(node, node.dist + 0.00000001) if not node.up.is_root() 
+                      else (node, root_distance + 0.00000001) 
+                      for node in tree.traverse() if not node.is_root()]
 
+    # remove leaves to only consider internal branches
+    if drop_leaves:
+        node_dists = [n for n in node_dists if not n[0].is_leaf()]
+        
     dist_series = pd.Series([i[1] for i in node_dists])
 
     fit_alpha, fit_loc, fit_beta = stats.lognorm.fit(dist_series.values)
@@ -136,11 +169,124 @@ def weighted_midpoint_root(tree):
 
     return tree
 
+# iterate through intermediate nodes and sum number of observances of attribute below node
+# return the node which best partitions the labels according to purity and scope
+def find_optimal_label_partition(tree, attribute='set'):
+
+    data = []
+    for l in tree.iter_leaves():
+        data.append([l.name, getattr(l, attribute)])
+        
+    leaf_mapping = pd.DataFrame(data, columns=['leaf', attribute])
+    labels = leaf_mapping[attribute].value_counts()
+    total_leaves = labels.sum()
+
+    i = 0
+    for node in tree.traverse(strategy='postorder'):
+        if not node.is_leaf():
+            node.name = i
+            i += 1
+
+    # traverse the tree from leaves to root counting all labels below
+    max_node = [None, 0]
+    for node in tree.traverse(strategy='postorder'):    
+        # skip leaves and root as these cannot be partition
+        if not node.is_root() and not node.is_leaf():
+
+            #initialise label counts 
+            node.add_feature('counts', {k:0 for k in labels.index})
+
+            #check child label counts
+            for child in node.get_children():
+                if child.is_leaf():
+                    node.counts[getattr(child, attribute)] += 1
+
+                # if child is internal node add individual prerecorded counts  
+                else:
+                    for k, v in child.counts.items():
+                        node.counts[k] = node.counts[k] + v
+
+            # calculate score as purity * scope = nA/nX_in_node * nA/nX for A and B
+            # can probably be replaced with entropy of label partition
+            total_node_count = sum(node.counts.values())
+            
+            internal_score = [(node.counts[l]/total_node_count) * (node.counts[l]/labels.loc[l]) for l in labels.index]
+            
+            external_score = [(labels.loc[l]-node.counts[l])/(total_leaves-total_node_count)
+                                  * ((labels.loc[l]-node.counts[l])/labels.loc[l]) for l in labels.index]
+            
+            #score = (np.array(internal_score) * np.array(external_score)).sum()
+            score = np.prod(np.array(internal_score) + np.array(external_score))
+            
+            node.add_feature('score', score)
+#             node.add_feature('int', '_'.join(str(i) for i in internal_score))
+#             node.add_feature('ext',  '_'.join(str(i) for i in external_score))
+            
+            # record greatest score
+            if score > max_node[1]:
+                max_node = [node, score]
+
+    
+    return max_node[0]
+
+
+# partition tree by clustering embedded internode distances
+# do not consider leaves!
+# hardcoded hyperparameters for UMAP and HDBSCAN
+def partition_tree_with_UMAP_HDBSCAN(tree):
+    
+    import umap
+    from sklearn.cluster import HDBSCAN
+    
+    # initialise properties
+    for i, n in enumerate(tree.traverse()):
+        n.add_feature('n', i)
+        n.add_feature('set', -1)
+
+    # pwd calculation for all non-leaf distances
+    nodes = [n for n in tree.traverse() if not n.is_leaf()]
+    distances = [[n1.n, n2.n, n1.get_distance(n2)] for i, n1 in enumerate(nodes) for n2 in nodes[i:]]
+    distances = pd.DataFrame(distances, columns=('l1', 'l2', 'dist'))
+
+    # calcaulate pairwise distances for UMAP embedding
+    # pivot to wideform, calculate distance, reindex to ensure square, symmetrize
+    idx = sorted(set(distances['l1']).union(distances['l2']))
+    pwd = (distances.pivot(index='l1', columns='l2', values='dist')
+            .pipe(lambda x:x)
+            .reindex(index=idx, columns=idx)
+            .fillna(0, downcast='infer')
+           )
+
+    # symmetrize
+    pwd = (pwd+pwd.T)
+
+    # UMAP embed and HDBSCAN fit
+    reducer = umap.UMAP(random_state = 0, n_neighbors=50, min_dist=0.3, n_components=2, metric='euclidean')
+    embedding = reducer.fit_transform(pwd.values)
+    fit = HDBSCAN(allow_single_cluster=True, min_cluster_size=10, min_samples=5).fit(embedding)
+
+    # format base UMAP data 
+    UMAP_data = pd.DataFrame(embedding, columns=['vec1', 'vec2'])
+    UMAP_data['acc'] = pwd.index.values
+    UMAP_data['set'] = fit.labels_
+    UMAP_data.set_index('acc',inplace=True)
+    
+    # assign leaves clusters based on their parent node set
+    # messy but fast
+    UMAP_data['node_ref'] = pd.Series(tree.traverse()).loc[UMAP_data.index]
+    for l in tree.get_leaves():
+        l.set = UMAP_data.loc[l.up.n].set
+    
+    # not return node references as they are messy
+    return tree, UMAP_data[['vec1','vec2','set']]
+
+
 # consider all "cherry nodes" with exactly two leaf children
 # iteratively crop most similar cherry clades until size
 # monophyletic=True requires tree feature ["tax"] for every leaf
 # if monophyletic only cherries with same tax are considered
 def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophyletic=False, crop_dict=None):
+    
     # helper function to assess whether node is a cherry
     def node_is_cherry_root(cherry_root, monophyletic=False):
         cherry_children = cherry_root.children
@@ -167,6 +313,10 @@ def crop_leaves_to_size(tree, max_size, save_cropped_references=True, monophylet
         else:
             return
 
+    # remove multifurcations to ensure cherry condition is always met
+    # identical sequences are removed
+    tree.resolve_polytomy(recursive=True)
+        
     # calculate number of leaves to remove to reach max_size
     leaves = tree.get_leaves()
     leaves_to_remove = len(leaves) - max_size
@@ -430,6 +580,7 @@ def get_multiple_soft_LCA_by_relative_purity(tree, tax, n_best, min_size, min_pu
 def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2, min_clade_purity=0.8,
                                          LCA_search_depth=4, crop_dict=None, leafDF=None,
                                          trim_by_individual_tax_rank=False):
+    
     # create initial naive leaf mapping unless provided
     if crop_dict is None:
         crop_dict = {name: [name] for name in tree.get_leaf_names()}
@@ -458,7 +609,8 @@ def crop_leaves_to_size_considering_taxa(tree, taxDF, max_size, min_clade_size=2
     # collapse all identified taxa to purity limit
     n_best = 99999
     for taxa in taxa_list:
-        lca_nodes = get_multiple_soft_LCA_by_relative_purity(tree, taxa, n_best, min_clade_size, min_clade_purity,
+        lca_nodes = get_multiple_soft_LCA_by_relative_purity(tree, taxa, n_best, 
+                                                             min_clade_size, min_clade_purity,
                                                              LCA_search_depth)
 
         # reduce LCA to representatives while maintaining leaf tax count
@@ -937,3 +1089,48 @@ def get_multiple_soft_LCAs(tree, attribute='tax_filter', attr_value='Eukaryota',
     print()
 
     return filtered_soft_LCA_nodes
+
+
+# use infomap to partition tree
+# untested!
+def calculate_tree_modules(treefile):
+    
+    tree = ete3.Tree(treefile, format=1)
+    print(f'Tree has {len(tree.get_leaves())} leaves' )
+    leaves = [node for node in tree.get_leaves()]
+
+    # create and populate imfomap graph with inverse leaf distances
+    import infomap
+    im1 = infomap.Infomap()
+
+    # enumerate nodes 
+    for i, n in enumerate(tree.traverse()):
+        n.add_feature('id', i)
+
+    for node in tree.traverse():
+        for d in node.children:
+            
+            branch_weight = 1/(d.dist+0.001)*1/(d.support+0.001)
+            
+            im1.add_link(node.id, d.id, weight=branch_weight)
+            im1.add_link(d.id, node.id, weight=branch_weight)
+
+
+    # Run the Infomap search algorithm to find optimal modules
+    # output logging is a bit wierd, does not properly update, get all stats from actual object
+    im1.run()
+
+    print(f"Found {im1.num_top_modules} modules with codelength: {im1.codelength}")
+    print(f"Effective number of top level modules are {im1.effective_num_top_modules}")
+
+    # get id to module mapping from infomap
+    modules = im1.get_modules()
+    
+    for n in tree.traverse():
+        n.add_feature('module', modules[n.id])
+
+        if n.is_leaf():
+            pass
+            #print(n.name.replace('_', ' '), n.module, sep='\t')
+            
+    return tree, im1

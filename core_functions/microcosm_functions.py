@@ -47,13 +47,11 @@ def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_
 
     # create a new DB for the query and target sequences
     print(f'{threadID_string} Preparing mmseqs data for query hits\n', end='')
-    subprocess.run(
-        f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {query_acc} {original_query_DB} {query_seqDB}".split())
+    subprocess.run(f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {query_acc} {original_query_DB} {query_seqDB}".split())
     subprocess.run(f'mmseqs convert2fasta -v 0 {query_seqDB} {query_fasta}'.split())
 
     print(f'{threadID_string} Preparing mmseqs data for target hits\n', end='')
-    subprocess.run(
-        f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {target_acc} {original_target_DB} {target_seqDB}".split())
+    subprocess.run(f"mmseqs createsubdb -v 0 --id-mode 1 --subdb-mode 1 {target_acc} {original_target_DB} {target_seqDB}".split())
     subprocess.run(f'mmseqs convert2fasta -v 0 {target_seqDB} {target_fasta}'.split())
 
     # create tsv with lineage information from spoofed clustering result
@@ -88,14 +86,19 @@ def prepare_mmseqs(file_root, file_basename, original_query_DB, original_target_
 # read fasta, align with FAMSA, filter and construct FastTree,
 # crop eaves to size and write new fasta with only cropeed tree leaf sequences
 # if supplied with taxonomy, will do taxonomically aware cropping
-def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_intermediate_files=True, taxDF=None, min_clade_size=2):
+def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, 
+                      save_intermediate_files=True, taxDF=None, min_clade_purity=0.9, min_clade_size=2,
+                      predelete_outliers = False, leaf_cutoff = 0.95,  clade_cutoff = 0.95 
+                     ):
 
     thread = current_process().pid
     threadID_string = f'{thread} | {base_fasta}:'
 
     from ete3 import Tree
     from core_functions.helper_functions import fasta_to_dict, dict_to_fasta, filter_by_entropy
+    from core_functions.tree_functions import get_outlier_nodes_by_lognorm, remove_outlier_nodes
     from paths_and_parameters import exe_fasttree, exe_famsa
+
 
     with open(base_fasta, 'r') as fastafile:
         size = fastafile.read().count('>')
@@ -128,19 +131,37 @@ def fasta_reduce_size(base_fasta, threads, max_leaf_size, filter_entropy, save_i
 
     fasttree_command = exe_fasttree + f" -gamma -out {base_fasta}.fasttree {base_fasta}.famsa"
     subprocess.run(fasttree_command.split(), stdout=fasttree_logfile, stderr=fasttree_logfile)
+    
+    tree = Tree(f'{base_fasta}.fasttree')
+    
+    # remove outlier leaves and nodes to avoid cropping to divergent set
+    if predelete_outliers:
+        
+        print(f'{threadID_string} removing outliers before cropping')
+
+        cropped_tree = tree.copy()
+        outlier_nodes, dist_series, fits, cutoff = get_outlier_nodes_by_lognorm(cropped_tree, p_low=0, p_high=leaf_cutoff, only_leaves=True, deletion_cutoff=0.2)
+        cropped_tree = remove_outlier_nodes(cropped_tree, outlier_nodes)
+        print(f'After removing outliers leaves Tree has {len(cropped_tree)} leaves')
+
+        outlier_nodes, dist_series, fits, cutoff = get_outlier_nodes_by_lognorm(cropped_tree, p_low=0, p_high=clade_cutoff, drop_leaves=True, only_leaves=False, deletion_cutoff=0.15)
+        cropped_tree = remove_outlier_nodes(cropped_tree, outlier_nodes)
+        print(f'After removing outliers Tree has {len(cropped_tree)} leaves')
+        
+        tree = cropped_tree.copy()
 
     # reduce leaves to size
     print(threadID_string + ' Cropping Leaves')
 
-    tree = Tree(f'{base_fasta}.fasttree')
-
-    # if taxonomic information is supplies crop while optimizing taxa
-    # retainat least minimum clade size for monophyletic taxa
+        
+    # if taxonomic information is supplied crop while optimizing taxa
+    # retain at least minimum clade size for monophyletic taxa
     if taxDF is not None:
         from core_functions.tree_functions import crop_leaves_to_size_considering_taxa
         tree, leafDF, crop_dict = crop_leaves_to_size_considering_taxa(tree, taxDF, max_leaf_size,
                                                                        min_clade_size=min_clade_size, 
-                                                                       min_clade_purity=0.9, LCA_search_depth=5)
+                                                                       min_clade_purity=min_clade_purity,
+                                                                       LCA_search_depth=5)
 
         # save leaf mappings from DF
         print(threadID_string + f' Writing .leaf_mapping after cropping')
@@ -786,6 +807,110 @@ def color_tree(tree, savefile=None, view_in_notebook=False):
         return annot_tree, Image(tmp_file)
 
     return annot_tree
+
+
+# try to merge two sets of fastas and construct a tree
+# evaluate the grouping of original set labels the tree to see if the best partition is non-random
+# runs famsa+FastTree cropping columns inbetween
+def test_anneal_fastas(fastas, threads=8, filter_entropy=0, max_leaves=500, random_label_samples=200,
+                      save_intermediate_files=False):
+    
+    from ete3 import Tree
+    from Bio import SeqIO
+    from core_functions.helper_functions import fasta_to_dict, dict_to_fasta, filter_by_entropy
+    from core_functions.tree_functions import crop_leaves_to_size, weighted_midpoint_root
+    from paths_and_parameters import exe_fasttree, exe_famsa
+
+    # threads for FastTree
+    os.environ['OMP_NUM_THREADS'] = str(threads)
+
+    merged_fasta = f'{fastas[0].rsplit("/", 1)[0]}/{"_vs_".join(fasta.split("/")[-1] for fasta in fastas)}'
+
+    all_seqs = []
+    leaf_data = []
+    for fasta in fastas:
+        name = fasta.split('/')[-1]
+        seqs = [*SeqIO.parse(fasta, format='fasta')]
+        leaf_data.append(pd.DataFrame({'acc':[s.id for s in seqs], 'set':[name]*len(seqs)}))
+        all_seqs.extend(seqs)
+
+    # recoed origin set of leaves and save to file
+    leaf_mapping = pd.concat(leaf_data).set_index('acc')
+    SeqIO.write(all_seqs, merged_fasta, 'fasta')
+
+    print(f'Evaluating merger of {len(all_seqs)} sequences from {len(fastas)} sets')
+
+
+    
+    # align filter and construct tree for seqs
+    famsa_logfile = open(f'{merged_fasta}.famsa.log', 'a')
+    fasttree_logfile = open(f'{merged_fasta}.fasttree.log', 'a')
+
+    famsa_command = exe_famsa + f' -t {threads} {merged_fasta} {merged_fasta}.famsa'
+    subprocess.run(famsa_command.split(), stdout=famsa_logfile, stderr=famsa_logfile)
+
+    aln = fasta_to_dict(file=f'{merged_fasta}.famsa')
+    aln_filter = filter_by_entropy(aln, filter_entropy)
+    dict_to_fasta(aln_filter, write_file=f'{merged_fasta}.famsa')
+
+    fasttree_command = exe_fasttree + f" -gamma -out {merged_fasta}.fasttree {merged_fasta}.famsa"
+    subprocess.run(fasttree_command.split(), stdout=fasttree_logfile, stderr=fasttree_logfile)
+
+    
+    
+    # reduce leaves to size for faster bootstrapping
+    tree = Tree(f'{merged_fasta}.fasttree')
+
+    # annotate leaves with real set membership for calculation of real partition
+    for i, l in enumerate(tree.get_leaves()):
+        l.add_feature('set', leaf_mapping.loc[l.name,'set'][0])
+
+    # reroot and save original tree
+    tree = weighted_midpoint_root(tree)
+    cropped_tree = tree.copy()
+
+    # crop tree and resample leaf mapping
+    print(f'Cropping joint tree to {max_leaves}')
+    cropped_tree, crop_dict = crop_leaves_to_size(cropped_tree, max_size = max_leaves, 
+                                          save_cropped_references=True, monophyletic=False, crop_dict=None)
+
+    cropped_leaf_mapping = pd.DataFrame([[l.name, leaf_mapping.loc[l.name,'set']] for l in cropped_tree.get_leaves()], 
+                                        columns = ['acc', 'set'])
+
+    
+    # bootstrap samples for evaluating partitioning score
+    data = []
+    for n in range(random_label_samples):
+
+        # reassign random leaf mapping from cropped labels to cropped tree leaves
+        rand_leaf_mapping = cropped_leaf_mapping.sample(frac=1, replace=False)['set'].values
+        for i, l in enumerate(cropped_tree.get_leaves()):
+                l.add_feature('set', rand_leaf_mapping[i])
+
+        # find score of best partition over the randomized tree labels
+        node = find_optimal_tree_partition(cropped_tree, attribute='set')
+        data.append(node.score)
+        
+    data = pd.Series(data)
+    dist = stats.expon(*stats.expon.fit(data))
+    
+    
+    
+    # annotate leaves with real set membership for calculation of real partition
+    for i, l in enumerate(cropped_tree.get_leaves()):
+        l.add_feature('set', leaf_mapping.loc[l.name,'set'])
+
+    node = find_optimal_tree_partition(cropped_tree, attribute='set')
+
+    p = (data[data >= node.score].count())/random_label_samples
+    print(f'Random score outperformed real score ({node.score:.5f}) in {data[data >= node.score].count()}/{random_label_samples} cases.')
+    print(f'Excpected p value from exponential distribution with u={dist.mean():.5f} and std={dist.std():.5f} p <= {(1-dist.cdf(node.score)):.5f}')
+    
+    if not save_intermediate_files:
+        subprocess.run(f'rm {merged_fasta}* ', shell=True)
+    
+    return node, p, data, dist, tree, cropped_tree
+
 
 # ---- OBSOLETE -----
 

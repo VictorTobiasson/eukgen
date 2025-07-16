@@ -65,7 +65,8 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
                                                   max_leaf_size=max_euk_sequences,
                                                   filter_entropy=microcosm_format_opts['filter_entropy'],
                                                   save_intermediate_files=True,
-                                                  taxDF=taxonomy_mapping)
+                                                  taxDF=taxonomy_mapping,
+                                                  predelete_outliers=True)
 
     else:
         print(f' There are less than {max_euk_sequences} sequences in {query_fasta} ({size}), no cropping needed')
@@ -91,7 +92,8 @@ def microcosm_run(file_root, file_basename, threads, save_intermediate_files):
                                                    max_leaf_size=max_prok_sequences,
                                                    filter_entropy = microcosm_format_opts['filter_entropy'],
                                                    save_intermediate_files=True,
-                                                   taxDF=taxonomy_mapping)
+                                                   taxDF=taxonomy_mapping,
+                                                   predelete_outliers=True)
 
     else:
         print(f' There are less than {max_prok_sequences} sequences in {target_fasta} ({size}), no cropping needed')

@@ -48,8 +48,10 @@ def build_HHsuite_database_from_MSAs(fasta_root, output_root, DB_name, mpis):
 
     return output_name
 
+
 #format and run hhsuite search swarm query and targetDB is root name as XXX (without _hhm.ffdata)
-def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, threads=1, search_type='hhblits', search_opts='', run_with_lscratch=True, return_blast_m6=False):
+def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, threads=1, search_type='hhblits', 
+                         search_opts='', run_with_lscratch=True, return_blast_m6=False):
 
     import subprocess
 
@@ -88,7 +90,15 @@ def hhsuite_swarm_search(queryDB, targetDB, output_root, splits, swarm_opts, thr
             batchfile.writelines(index_batch)
 
         #add execution line to swarmfile
-        swarm.write(f'{exe_python} -u {exe_hhsuite_search} --query_hhm_ffindex {index_batch_name} --query_hhm_ffdata {queryDB}_hhm.ffdata --targetDB {targetDB} --output_root {output_root} --threads {threads} --search_type {search_type} --search_opts "{search_opts}" --run_with_lscratch {run_with_lscratch} --return_blast_m6 {return_blast_m6}\n')
+        search_cmd = f'{exe_python} -u {exe_hhsuite_search} --query_hhm_ffindex {index_batch_name} --query_hhm_ffdata {queryDB}_hhm.ffdata --targetDB {targetDB} --output_root {output_root} --threads {threads} --search_type {search_type} --search_opts "{search_opts}"' 
+        
+        if run_with_lscratch:
+            search_cmd = search_cmd + ' --run_with_lscratch '
+            
+        if return_blast_m6:
+            search_cmd = search_cmd + ' --return_blast_m6 '
+        
+        swarm.write(search_cmd + '\n')
 
     swarm.close()
 

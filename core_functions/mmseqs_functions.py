@@ -170,7 +170,7 @@ def cascade_profile_cluster(root, seqDB, clustDB, cascade_steps, threads, extra_
 
 
 # write fasta files into individual files for realignment
-def extract_query_fasta(root, seqDB, clusterDB, skip_singletons=True):
+def extract_query_fasta(root, seqDB, clusterDB, skip_singletons=True, min_size=1):
     from paths_and_parameters import exe_mmseqs
 
     # define and assign commands and parameters to run
@@ -199,7 +199,7 @@ def extract_query_fasta(root, seqDB, clusterDB, skip_singletons=True):
         name = fastastr.split('\n')[0].strip('>').split(' ')[0]
         size = fastastr.count('>')
 
-        if skip_singletons and size > 1:
+        if skip_singletons and size > min_size:
             with open(f'{fasta_root}{name}', 'w') as fastafile:
                 fastafile.write(fastastr)
 
@@ -227,11 +227,14 @@ def realign_all_fastas(fasta_root, threads, max_sequences=20, save_intermediate_
     return
 
 
+# +
+#OBSOLETE!!!
+
 # realign all fasta files in directory submitting individual batch jobs to the swarm system
 # swarm header formatted from swarm opts dictionary of parameters
 # requires ONLY fasta files in fasta_root
 # this is as we avoid .fasta extension as hhmake takes index name from file name
-#OBSOLETE!!!
+
 def realign_all_fastas_swarm(fasta_root, swarm_opts, max_sequences=250, filter_entropy=0.5, muscle_reps=10):
     from paths_and_parameters import path_tmp, exe_python, exe_realignment
     from core_functions.helper_functions import swarm_submit_with_lock
@@ -265,6 +268,8 @@ def realign_all_fastas_swarm(fasta_root, swarm_opts, max_sequences=250, filter_e
 
     return fasta_root
 
+
+# -
 
 # realign all fasta files in directory submitting individual batch jobs to the swarm system
 # swarm header formatted from swarm opts dictionary of parameters
